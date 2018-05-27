@@ -47,14 +47,15 @@ Text-Width: 80
 
 - **C-y** WKLEJA
 - **M-w** kopiuje
+- **C-x h** zaznacza caly buffer
+
 
 - **M-y** historia zabić. TAm ze możesz zmienić
 
 - **C-x C-s** zapisuje plik
-- **C-x  bufname**  Zabija bufera
+- **C-x bufname**  Zabija bufera
 
-
-<x-color><param>#4f97d7</param>SUPERION LISP</x-color>
+<x-color><param>#4f97d7</param>SUPERIOR LISP</x-color>
 
 =
 - **C-x C-e** wysyla kod
@@ -75,6 +76,9 @@ Text-Width: 80
 
 - **M-p** poprzednia komenda w replrze
 
+
+- **C-c M-i** czyści repla
+
 <x-color><param>#2d9574</param>okienka</x-color>
 
 -
@@ -87,20 +91,22 @@ Text-Width: 80
 - **C-x }** oko staje sie szersze
 - **C-x {** oko staje sie chudsze
 
-<x-color><param>#2d9574</param>Hakermen z okienkami:</x-color>
+<x-color><param>#2d9574</param>Hakermen z okienkami</x-color>
 
 -
 - **C-x 1**
 - **C-x 3**
 - **C-x o**
+
+
 - **C-x b <<RET>**
 - **C-x o**
 
 <x-color><param>#2d9574</param>Zaznaczanie</x-color>
 
 -
-**C-M-u** na poczatek s-expression
-**C-M-SPC** zaznacz to s-expression
+- **C-M-u** na poczatek s-expression
+- **C-M-SPC** zaznacz to s-expression
 
 - **C-M-\** stylizuje kod w caly pliku
 
@@ -111,7 +117,5 @@ Text-Width: 80
 - **M-(** nowe sexpresson
 - **M-)** idz za sexpression
 - **C-M-k** wytnij sexpression
-
-
 
 
