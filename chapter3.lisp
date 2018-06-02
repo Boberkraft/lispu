@@ -388,3 +388,10 @@
 (showdots '(a b c)) ;; but its only shallow print
 
 ;; 9 for later
+
+(defun tst ()
+  (let ((a 7)
+        (b a))
+    (print a) (print b)))
+
+(tst)

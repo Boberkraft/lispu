@@ -53,7 +53,7 @@ Text-Width: 80
 - **M-y** historia zabić. TAm ze możesz zmienić
 
 - **C-x C-s** zapisuje plik
-- **C-x bufname**  Zabija bufera
+- **C-x k bufname**  Zabija bufera
 
 <x-color><param>#4f97d7</param>SUPERIOR LISP</x-color>
 
@@ -64,7 +64,7 @@ Text-Width: 80
 
 - **C-c C-z** - zmienia bufer na ten do lispa
 
-- **C-c C-c** - wykonuje wyrażenike przed kursorem
+- **C-c C-c** - wykonuje wyrażenie przed kursorem
 - **C-M-x** - wykonuje całą funkcje
 - **C-c C-r** wykonuje zaznaczony region
 - **C-c C-k** kompluje i wczytuje cały plik
