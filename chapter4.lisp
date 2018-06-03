@@ -275,3 +275,59 @@ p
     (bst-traverse fn (node-r bst))))
 
 (bst-traverse #'princ (bst-remove 2 nums #'<))
+
+
+;;4.8
+
+(setf ht (make-hash-table))
+(gethash 'color ht)
+
+(setf (gethash 'color ht) 'red)
+(gethash 'color ht)
+
+(setf bugs (make-hash-table))
+(push "doesn't take keyword arguemnts."
+      (gethash "benis" bugs))
+
+(setf fruits (make-hash-table))
+(setf (gethash 'apricot fruits) t)
+
+(remhash 'color ht)
+
+(setf (gethash 'shape ht) 'spherical
+      (gethash 'size ht) 'giant)
+
+(maphash #'(lambda (k v)
+             (format t "~a = ~a~%" k v))
+         ht)
+
+(make-hash-table :size 5)
+
+(setf writers (make-hash-table :test #'equal))
+(setf (gethash `(ralph waldo emerson) writers) t)
+
+;;1
+(defun quarter-turn (arrs)
+  (let* ((dim (car (array-dimensions arrs)))
+         (new-arrs (make-array (list dim dim))))
+    (dotimes (i dim)
+      (dotimes (j dim)
+        (setf (aref new-arrs i j)
+              (aref arrs (- dim j 1) i))))
+    new-arrs))
+
+
+(quarter-turn-other #2A((a b c)
+                        (d e f)
+                        (g h i)))
+
+(print (quarter-turn #2A((a b c)
+                         (d e f)
+                         (g h i))))
+
+
+(let* ((x 5)
+      (y (+ x 2)))
+  y)
+
+
