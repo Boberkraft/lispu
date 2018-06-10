@@ -330,4 +330,18 @@ p
       (y (+ x 2)))
   y)
 
+(defun test (gaz przyspieszenie)
+  (round (* 1
+            (* przyspieszenie
+               (let ((spd (- 1
+                             (/ gaz 230))))
+                 (if (> spd 0)
+                     spd
+                     0))))))
+
+(test 100 10)
+(let ((predkosc 0))
+  (dotimes (n 100)
+    (format t "~a: Predkosc: ~a ~%" n (setf predkosc (+ predkosc (test predkosc 10)))))
+  (format t "~a: Predkosc: ~a ~%" 99 (setf predkosc (+ predkosc (test predkosc 1)))))
 

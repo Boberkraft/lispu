@@ -1,34 +1,9 @@
-Content-Type: text/enriched
-Text-Width: 80
-
-<x-color><param>#4f97d7</param>Podstawowe</x-color>
-
-=
-- **C-v** screen w dół
-- **M-v** screen w górę
-- **C-l** tekst na srodku ekranu
-
-- **C-p C-n C-b C-f** jedna literka
-- **M-b M-f** słowo
-
-- **C-a** przód linii
-- **C-e** koniec linii
-
-
-- **M-a** przód zdania
-- **M-e** koniec zdania
-
-- **M->** koniec pliku
-- **M-<<** początek pliku
-
-- **C-u 8 C-p** daje 8 literek do prrodu
-- **C-g** canceluje wszystko
-
-- *(load "C:\\Users\\Bobi\\Desktop\\lispu\\land-of-lisp\\graph-util")
+(load "C:\\Users\\Bobi\\Desktop\\lispu\\land-of-lisp\\graph-util")
 
 (defparameter *congestion-city-nodes* nil)
 (defparameter *congestion-city-edges* nil)
 (defparameter *visited-nodes* nil)
+(defparameter *player-pos* 0)
 (defparameter *node-num* 30)
 (defparameter *edge-num* 45)
 (defparameter *worm-num* 3)
@@ -119,7 +94,7 @@ Text-Width: 80
                             node1-edges))))
           edge-alist))
 
-;;(add-cops '((1 (2)) (2 (1) (3)) (3 (2))) '((2 . 3)))
+
 
 (defun neighbours (node edge-alist)
   (mapcar #'car (cdr (assoc node edge-alist))))
@@ -132,8 +107,6 @@ Text-Width: 80
       (some (lambda (x)
               (within-one x b edge-alist))
             (neighbours a edge-alist))))
-
-
 
 (defun make-city-nodes (edge-alist)
   (let ((wumpus (random-node))
@@ -153,120 +126,89 @@ Text-Width: 80
                                    (cdr (assoc n edge-alist)))
                          '(sirens!))))))
 
+(defun find-empty-node ()
+  (let ((x (random-node)))
+    (if (cdr (assoc x *congestion-city-nodes*))
+        (find-empty-node)
+        x)))
+
+
+(defun draw-city ()
+  (ugraph->png "C:\\Users\\Bobi\\Desktop\\lispu\\land-of-lisp\\cityfull"
+               *congestion-city-nodes*
+               *congestion-city-edges*))
+
+(defun known-city-nodes ()
+  (mapcar (lambda (node)
+            (if (member node *visited-nodes*)
+                (let ((n (assoc node *congestion-city-nodes*)))
+                  (if (eql node *player-pos*)
+                      (append n '(*))
+                      n))
+                (list node '?)))
+          (remove-duplicates
+           (append *visited-nodes*
+                   (mapcan (lambda (node)
+                             (mapcar #'car
+                                     (cdr (assoc node
+                                                 *congestion-city-edges*))))
+                           *visited-nodes*)))))
+
+(defun known-city-edges ()
+  (mapcar (lambda (node)
+            (cons node
+                  (mapcar (lambda (X)
+                            (if (member (car x) *visited-nodes*)
+                                x
+                                (list (car x ))))
+                          (cdr (assoc node *congestion-city-edges*)))))
+          *visited-nodes*))
+
+(defun draw-known-city ()
+  (ugraph->png "C:\\Users\\Bobi\\Desktop\\lispu\\land-of-lisp\\known-city"
+               (known-city-nodes)
+               (known-city-edges)))
 
 (defun new-game ()
   (setf *congestion-city-edges* (make-city-edges))
   (setf *congestion-city-nodes* (make-city-nodes *congestion-city-edges*))
-  ;;(setf *player-pos* (find-empty-node))
-  ;;(setf *visited-nodes* (list *player-pos*))
-  (draw-city))
+  (setf *player-pos* (find-empty-node))
+  (setf *visited-nodes* (list *player-pos*))
+  (draw-city)
+  (draw-known-city))
 
-(defun find-empty-node ()
-  (let ((x (random-node)))
-    (if (cdr (assoc x *congestion-city-edges*))
-        (find-empty-node)
-        x)))
+(defun walk (pos)
+  (handle-direction pos nil))
 
-(defun draw-city ()
-  (ugraph->png "C:\\Users\\Bobi\\Desktop\\lispu\\land-of-lisp\\city"
-               *congestion-city-nodes*
-               *congestion-city-edges*))
-*C-x 1** zostawia jedno okienk
+(defun charge (pos)
+  (handle-direction pos t))
 
-- **<<DEL>** usun literke przed ku]rs   Made with   by the communityoerm
-- **C-d** usuń literke po kursorze
+(defun handle-direction (pos charging)
+  (let ((edge (assoc pos
+                     (cdr (assoc *player-pos* *congestion-city-edges*)))))
+    (if edge
+        (handle-new-place edge pos charging)
+        (princ "That location does not exists!"))))
 
-- **C-w** też WYCINA/ZAIBJA do konca zdania.
-        Zaznaczony tekst czy cos
-
-- **M-<<DEL>** Usuns slowo przed kursorem
-
-- **M-D** usuń słowo po kursorze
-
-- **C-k** usuń wszystko do końca linii
-
-- **M-k** usuń wszystko do końca zdania
-
-
-- **C-<<SPC>** uruchamia zaznaczanie tekstu
-
-- **C-/** undo
-
-- **C-y** WKLEJA
-- **M-w** kopiuje
-- **C-x h** zaznacza caly buffer
+(defun handle-new-place (edge pos charging)
+  (let* ((node (assoc pos *congestion-city-nodes*))
+         (has-worm (and (member 'glow-worm node)
+                        (not (member pos *visited-nodes*)))))
+    (pushnew pos *visited-nodes*)
+    (setf *player-pos* pos)
+    (draw-known-city)
+    (cond ((member 'cops edge) (princ "You ran into cops. Game Over."))
+          ((member 'wumpus node) (if charging
+                                     (princ "You found the Wumpus!")
+                                     (princ "You ran  into the Wumpus")))
+          (charging (princ "You wasted you last bullet. Game Over."))
+          (has-worm (let ((new-pos (random-node)))
+                      (princ "You ran into Glow Worm Gang! You're now at ")
+                      (princ new-pos)
+                      (handle-new-place nil new-pos nil))))))
+(new-game)
 
 
-- **M-y** historia zabić. TAm ze możesz zmienić
 
-- **C-x C-s** zapisuje plik
-- **C-x k bufname**  Zabija bufera
-
-<x-color><param>#4f97d7</param>SUPERIOR LISP</x-color>
-
-=
-- **C-x C-e** wysyla kod
-
-- **C-x b** switch-to-buffer
-
-- **C-c C-z** - zmienia bufer na ten do lispa
-
-- **C-c C-c** - wykonuje wyrażenie przed kursorem
-- **C-M-x** - wykonuje całą funkcje
-- **C-c C-r** wykonuje zaznaczony region
-- **C-c C-k** kompluje i wczytuje cały plik
-
-- **M-.** idzie do definicji symbolu
-- **M-,** jak użyłęś M-. to to wraca
-
-- **M-x** slime-pwd wyświetla pwd procesu lispa
-
-- **M-p** poprzednia komenda w replrze
-
-
-- **C-c M-i** czyści repla
-
-- **C-c C-k** eval whole file
-
-<x-color><param>#2d9574</param>okienka</x-color>
-
--
-- **C-x 1** Jedno okienko
-- **C-x 2** okienka horyzontalnie
-- **C-x 2** okienka Pionowo
-- **C-x o** zmiana aktualnego bufera
-- **C-x b** zmiana bufera w okienku
-- **C-x ^** okno staje sie wyzsze
-- **C-x }** oko staje sie szersze
-- **C-x {** oko staje sie chudsze
-
-<x-color><param>#2d9574</param>Hakermen z okienkami</x-color>
-
--
-- **C-x 1**
-- **C-x 3**
-- **C-x o**
-
-
-- **C-x b <<RET>**
-- **C-x o**
-
-<x-color><param>#2d9574</param>Zaznaczanie</x-color>
-
--
-- **C-M-u** na poczatek s-expression
-- **C-M-SPC** zaznacz to s-expression
-
-- **C-M-\** stylizuje kod w caly pliku
-
-- **<<TAB>** stylizuje linie
-- **C-M-i** podpowiedz
-- **M-^** join line
-
-- **M-(** nowe sexpresson
-- **M-)** idz za sexpression
-- **C-M-k** wytnij sexpression
-
--  **M-x sp-cheat-sheet** 
 
 
