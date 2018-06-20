@@ -50,4 +50,61 @@
                                  :waist-size 32
                                  :favorite-color "blue"))
 
+(length '(a b c))
+(length "Blub")
+(length (make-array 5))
 
+(find-if #'numberp '(a b 5 d))
+(count #\s "mississippi")
+
+(position #\4 "2kewkl4skewl")
+
+(some #'numberp '(a b 5 d))
+(every #'numberp '(a b 5 d))
+
+
+(reduce #'+ '(3 4 6 5 2))
+
+(reduce (lambda (best item)
+          (if (and (evenp item)
+                   (> item best))
+              item
+              best))
+        '(7 4 6 5 2)
+        :initial-value 0)
+
+(defun sum (lst)
+  (reduce #'+ lst))
+
+(sum (make-array 5 :initial-contents '(1 2 3 4 5)))
+
+(map 'string
+     (lambda (x)
+       (if (eq x #\s)
+           #\S
+           x))
+     "this this is a string")
+
+(subseq "america" 2 6)
+(sort '(5 8 2 4 9 3 6) #'<)
+
+(defun add (a b)
+  (cond ((and (numberp a)
+              (numberp b))
+         (+ a b))
+        ((and (listp a)
+              (listp b))
+         (append a b))))
+
+(defmethod add-my ((a number)
+                   (b number))
+  (+ a b))
+
+(defmethod add-my ((a list)
+                   (b list))
+  (append a b))
+
+
+(add-my 3 6)
+
+(add-my '(a b) '(c d))
