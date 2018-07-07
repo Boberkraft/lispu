@@ -53,7 +53,7 @@
       (parse-params (read-sequence (make-string (read content)) stream)))))
 
 (defun serve (request-handler)
-  (let ((socket (socket-server 12389)))
+  (let ((socket (socket-server 2137)))
     (unwind-protect
        (loop (with-open-stream (stream (socket-accept socket))
                  (let* ((url    (parse-url (read-line stream)))
@@ -73,4 +73,4 @@
             (format t "Nice to meet you, ~a!" (cdr name))))
       (princ "Sorry... I don't know that page.")))
 
-(serve #'hello-request-handler)
+;;(serve #'hello-request-handler)

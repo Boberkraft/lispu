@@ -41,6 +41,8 @@
                                            player
                                            spare-dice))))
 
+;;(player board ((skad gdzie) gra) ((skad gdzie) gra))
+
 (let ((old-game-tree (symbol-function 'game-tree))
       (previous (make-hash-table :test #'equalp)))
   (defun game-tree (&rest rest)
@@ -63,16 +65,20 @@
              (car (aref board pos)))
            (dice (pos)
              (cadr (aref board pos))))
-    (mapcan (lambda (src)
+    (mapcan (lambda (src) ;; dla wszystkich pol
               (when (eq (player src) ;; kiedy to twoje pole
                         cur-player)
                 (mapcan (lambda (dst)
-                          (when (and (not (eq (player dst) ;; kiedy nie jest to twoja wlase pole
+                          (when (and (not (eq (player dst) ;; kiedyto nie  twoja wlase pole
                                               cur-player))
-                                     (> (dice src) (dice dst))) ;; kiedy 
+                                     (> (dice src) (dice dst))) ;; kiedy mozesz zaatakowac
                             (list
                              (list (list src dst)
-                                   (game-tree (board-attack board cur-player src dst (dice src))
+                                   (game-tree (board-attack board
+                                                            cur-player
+                                                            src
+                                                            dst
+                                                            (dice src))
                                               cur-player
                                               (+ spare-dice (dice dst))
                                               nil)))))
@@ -239,9 +245,6 @@
          (play-vs-computer (handle-computer tree)))))
 
 
-(play-vs-computer (game-tree (gen-board) 0 0 t))
+;;(play-vs-computer (game-tree (gen-board) 0 0 t))
 
-
-(defparameter *foo* (lambda ()
-                      5))
 

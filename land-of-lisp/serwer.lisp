@@ -1,6 +1,5 @@
 
 
-
 (defun bad-function ()
   (error 'foo))
 
@@ -96,16 +95,18 @@
         (read-sequence content stream) ;; the f
         (parse-params content)))))
 
-(get-header (make-string-input-stream "Host: www.mywebsite.com
-User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.5)
-Content-Length: 39
-
-"))
+;;(get-header (make-string-input-stream "Host: www.mywebsite.com
+;;User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.5)
+;;Content-Length: 39"))
 
 (defun serve (request-handler)
-  (let ((socket (socket-server (progn (princ "Podaj port: ")
-                                      (read)))))
-    (format t "Starting server")
+  (let ((socket (socket-server (progn (princ "Jaki ma byc port twojego serwera?: ")
+                                      (let ((port (read)))
+                                        (princ "Port is ")
+                                        (princ port))))))
+    (format t "Starting server" )
+    (sleep 2)
+    (format t "...")
     (unwind-protect
          (loop (with-open-stream (stream (socket-accept socket))
                  (format t "Somebody connected!~%")
@@ -131,21 +132,11 @@ Content-Length: 39
 
 ;;(hello-request-handler "greeting" nil '((name . "Bob")))
 
-(serve #'hello-request-handler)
+;;(serve #'hello-request-handler)
 
 
-(defun my-serve ()
-  (let* ((socket (socket-server (progn (princ "Podaj port: ")
-                                       (read))))
-         (stream (socket-accept socket)))
-    
-    (format t "Starting server")
-    (loop (format t "Somebody connected!")
-       (format stream "HELLO~%")
-       (force-output stream))))
 
 
-(format t "SERVER STOPED")
 
 
 
