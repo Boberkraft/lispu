@@ -15,7 +15,7 @@
 (show-squeres 2 3)
 
 (Defun Hello-World ()
-  (Format T "Helll World!"))
+  (Format t "Helll World!"))
 
 (defun our-member (obj lst)
   (if (null lst)
@@ -29,14 +29,14 @@
 (defun ask-number ()
   (format t "Please enter a number: ")
   (let ((val (read)))
-    (if (number p val)
+    (if (numberp val)
         val
         (ask-number))))
 
 (setf a b
       c d
       e f)
-
+ 
 (defun show-squeres (start end)
   (do ((i start (+ i 1)))
       ((> i end) `done)
@@ -76,7 +76,7 @@
 (+ (- 5 1) (+ 3 7)) ; 14
 (list 1 (+ 2 3)) ; (1 5)
 (if (listp 1) (+ 1 2) (+ 3 4)) ;7
-(list (and (listp 3) t ) (+ 1 2)) ;nil 3
+(list (and   uujnnb(listp 3) t ) (+ 1 2)) ;nil 3
 
 
 ;; 2
@@ -86,7 +86,7 @@
 
 ;;3
 (defun czwarty (lst)
-  (car (cdr (cdr (cdr lst)))))
+  (car (cdr (def (cdr  lst)))))
 
 (czwarty '(1 2 3 4 5 6 7))
 
@@ -135,7 +135,7 @@
       t
       (contains-list (cdr lst))))
 
-(contains-list '()()()()()()()()(
+
  (contains-list '(a b c d (a b c)))
 
 ;;8
@@ -189,3 +189,5 @@
 
 (summit '(2 5 6 4 3))
 (car nil)
+
+abcdefaa

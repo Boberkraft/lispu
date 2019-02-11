@@ -4,6 +4,14 @@ Text-Width: 80
 <x-color><param>#4f97d7</param>Podstawowe</x-color>
 
 =
+
+- **C-/** Cofnij
+
+- **C-y** wklej
+- **M-w** kopiuj
+- **C-x h** zaznacza caly buffer
+
+
 - **C-v** screen w dół
 - **M-v** screen w górę
 - **C-l** tekst na srodku ekranu
@@ -43,32 +51,51 @@ Text-Width: 80
 
 - **C-<<SPC>** uruchamia zaznaczanie tekstu
 
-- **C-/** undo
-
-- **C-y** WKLEJA
-- **M-w** kopiuje
-- **C-x h** zaznacza caly buffer
 
 
 - **M-y** historia zabić. TAm ze możesz zmienić
 
 - **C-x C-s** zapisuje plik
-- **C-x k bufname**  Zabija bufera
+
+
+<x-color><param>#2d9574</param>Buffery</x-color>
+
+-
+- **C-x k bufname**  kill-buffer Zabija bufera
+
+- **<<SPC> b d** zabija bufer
+
+- **<<SPC> w d** zabija okno
+
+- **C-x b** switch-to-buffer
+
+- **<<SPC> b b** zmienia buffer
+
+- **C-x h** zaznacza caly buffer
+
+- **<<SHIFT> strzałka** zmienia bufer
+
+- **<<SPC> 1** zmienia buffer na 1
+
+- **<<SPC> <<TAB>** circle buffer
 
 <x-color><param>#4f97d7</param>SUPERIOR LISP</x-color>
 
 =
-- **C-x C-e** wysyla kod
 
-- **C-x b** switch-to-buffer
+<x-color><param>#2d9574</param>Kompilacja</x-color>
 
-- **C-c C-z** - zmienia bufer na ten do lispa
+-
+<x-color><param>#2d9574</param>C-x</x-color>
 
-- **C-c C-c** - wykonuje wyrażenie przed kursorem
-- **C-M-x** - wykonuje całą funkcje
+-
+- **C-c C-k** kompluje i wczytuje cały plik z aktualnego bufferu
+- **C-x C-e** Kompiluje ORAZ wykonuje funkcję przy pointerze
+
+- **C-M-x** kompiluje funkcję
+
 - **C-c C-r** wykonuje zaznaczony region
-- **C-c C-k** kompluje i wczytuje cały plik
-
+- **C-c C-z** zmienia bufer na ten do lispa
 - **M-.** idzie do definicji symbolu
 - **M-,** jak użyłęś M-. to to wraca
 
@@ -76,10 +103,17 @@ Text-Width: 80
 
 - **M-p** poprzednia komenda w replrze
 
+- **M-n** następna komenda w replu
 
-- **C-c M-i** czyści repla
+- **C-c M-o** czyści repla
 
+- **C-c C-c** - KOMPILUJE i wykonuje  wyrażenie przed kursorem
 - **C-c C-k** eval whole file
+
+
+- **M-n** następny warrning
+
+- **M-p** poprzedni warning
 
 <x-color><param>#2d9574</param>okienka</x-color>
 
@@ -135,3 +169,6 @@ Text-Width: 80
 
 -
 - **where-is** mozna sprawdzic komendy
+
+- *M-<<SPC>*
+

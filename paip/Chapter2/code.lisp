@@ -95,7 +95,20 @@
     (Verb -> hit took saw liked)
     (Pronoun -> he she it these those that)))
 
-(setf *grammar* *bigger-grammar*)
+(defparameter *polish-grammar*
+  '((zdanie -> (podmiot orzeczenie))
+    (orzeczenie -> (czasownik przydawka*) w (miejsce))
+    (podmiot -> (reczownik) (okolicznik w przydawka* reczownik))
+    (przydawka* -> () (przydawka przydawka*))
+    (przydawka -> smaczne wesołe duże ciemne grube)
+    (okolicznik -> () wyjątkowo niesamowicie)
+    (czasownik -> rosły biegły spały)
+    (miejsce -> lesie domu)
+    (rzeczownik -> grzyby kubek andrzej)
+    ))
+
+
+(setf *grammar* *polish-grammar*)
 
 (defun generate-tree (phrase)
   "Generate a random sentence or phrase,
