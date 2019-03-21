@@ -1,4 +1,32 @@
 
+
+(ql:quickload :bt-semaphore)
+(ql:quickload :cepl.sdl2)
+(ql:quickload :livesupport)
+(defpackage #:tetris
+  (:use :bt-semaphore
+        :cepl.sdl2
+        :livesupport
+        :cl)
+  (:export :+width+
+           :+height+
+           :*curr-shape*
+           :*curr-row*
+           :*curr-column*
+           :*map*
+           :*game-over*
+           :left
+           :right
+           :down
+           :rotate
+           :create-computer
+           :*shape-touched-callback*
+           :a :b :c :d :e :f :g :h :x :* :-
+           :SYMBOL-AT
+           ))
+
+(in-package #:tetris)
+
 (defvar +width+ 10 "width of the map")
 (defvar +height+ 20 "height of the map")
 
@@ -17,9 +45,9 @@
 (defparameter *events* nil)
 (defparameter *lock* (bt:make-lock))
 (defparameter *difficulty* 1)
-(ql:quickload :bt-semaphore)
-(ql:quickload :cepl.sdl2)
-(ql:quickload :livesupport)
+(defparameter *shape-touched-callback* (lambda (piece-color)
+                                         (declare (ignore piece-color))
+                                         nil))
 
 (defun init-tetris ()
   (setf *map* (loop for rows below +height+
@@ -34,7 +62,7 @@
 
 (push '(o . (((a a)
               (a a))
-             )) *shapes*)
+             a)) *shapes*)
 
 (push '(t . (((b b b)
               (- b -))
@@ -64,7 +92,7 @@
               (g -))
              g)) *shapes*)
 
-(push '(duzy-kloc . (((- a e)
+#+nil(push '(duzy-kloc . (((- a e)
                       (- b f)
                       (- c g)
                       (- d *))
@@ -91,6 +119,7 @@
   (cadr (assoc s *shapes*)))
 
 (defmethod get-color ((num number))
+  
   (caddr (nth num *shapes*)))
 
 (defmethod get-color ((s symbol))
@@ -269,9 +298,11 @@
                (will-shape-touch-floor *curr-shape* new-column new-row))
            ;;; restart piece --
            (format t "Floor or piece touched!~%")
-           (add-curr-shape-to-map)
-                                        ; put piece on the spot
+           (add-curr-shape-to-map) ; put piece on the spot
+           (funcall *shape-touched-callback* ; a cool animation 
+                    (get-color *curr-shape-number*))
            (setf *curr-shape* nil) ;to gen new piece
+           
            )
           ;;; do nothing --
           ((will-shape-touch-walls *curr-shape* new-column new-row)
@@ -283,7 +314,10 @@
     (when (get-complete-lines)
       (push '(lambda ()
               (remove-complete-lines)) *events*) ;; execute later
-      (hilight-complete-lines))))
+      (hilight-complete-lines)
+      (format t "Hilightin completed lines~%")
+      (funcall *shape-touched-callback* ; a cool animation 
+               '*))))
 
 (defun execute-all-events ()
   (mapc (lambda (event) (funcall (eval event))) *events* )
@@ -364,6 +398,7 @@
 (defun game-over-screen ()
   (setf *game-over* t)
   (format t "GAME OVER!~%"))
+
 
 
 '(simple-repl)
