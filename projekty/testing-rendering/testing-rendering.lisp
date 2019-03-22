@@ -48,7 +48,7 @@
     (tetris:* (v! 1    0    0   ))
     (tetris:- (v! 1.01 0.50 1.00))
     (grey     (v! 0.1  0.1  0.1))
-    (otherwise (error  (format nil "color for block ~a not found!" sym)))))
+    (otherwise (error  (format nil "color for block: ~a not found!" sym)))))
 
 (defun-g some-vert-stage-z ((vert g-pnt)
                             &uniform (now :float)
