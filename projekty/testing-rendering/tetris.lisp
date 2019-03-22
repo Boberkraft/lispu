@@ -18,6 +18,10 @@
            :left
            :right
            :down
+           :drop-down
+           :get-ghost-shape-cords
+           :get-current-ghost-shape
+           :get-current-color
            :rotate
            :create-computer
            :*shape-touched-callback*
@@ -119,13 +123,40 @@
   (cadr (assoc s *shapes*)))
 
 (defmethod get-color ((num number))
-  
   (caddr (nth num *shapes*)))
 
 (defmethod get-color ((s symbol))
   (caddr (assoc s *shapes*)))
 
+(defun get-current-color ()
+  (get-color *curr-shape-number*))
 
+(flet ((help-get-ghost-shape (shape-list)
+         "Replaces all colors with '+"
+         (subst-if '+ (lambda (symbol)
+                        (if (and (not (eql symbol '-))
+                                 (not (listp symbol)))
+                            t))
+                   shape-list)))
+  (defmethod get-ghost-shape ((s symbol))
+    (help-get-ghost-shape (get-shape s)))
+  (defmethod get-ghost-shape ((n number))
+    (help-get-ghost-shape (get-shape n)))
+  (defun get-current-ghost-shape ()
+    (help-get-ghost-shape *curr-shape*)))
+
+
+(defun get-ghost-shape-cords ()
+  "Returns (VALUES X Y) that's are cords for ghost shape
+   or nil"
+  (let ((ghost-shape (get-current-ghost-shape)))
+    (loop for row from *curr-row* to +height+ ; to should be -1, but it doesnt mater
+       when (or (will-shape-touch-others ghost-shape *curr-column* row)
+                 (will-shape-touch-floor ghost-shape *curr-column* row))
+       do (return-from get-ghost-shape-cords
+            (values *curr-column*
+                    (1- row)))))
+  nil)
 
 ;; '((- x -)(x x x)(x x x)) => '((x x -)(x x x)(x x -))
 ;;
@@ -143,6 +174,7 @@
                 (will-shape-touch-floor rotated *curr-column* *curr-row*)
                 (will-shape-touch-walls rotated *curr-column* *curr-row*))
       (setf *curr-shape* rotated))))
+
 
 (defmacro symbol-at (col row 2d-list &optional check)
   (if check
@@ -168,7 +200,7 @@
            when (and (not (eql shape-symbol-at '-))
                      (not (eql map-symbol-at '-)))
            do (progn
-                (format t "~a ~a" shape-symbol-at map-symbol-at)
+                #+nil(format t "~a ~a" shape-symbol-at map-symbol-at)
                 (return-from will-shape-touch-others t))))
   nil)
 
@@ -219,6 +251,7 @@
                                (+ start-row row)
                                *map*)
                     shape-symbol))))
+
 
 (defun remove-shape-from-map (shape start-col start-row)
   (loop for row below (length shape)
@@ -315,7 +348,7 @@
       (push '(lambda ()
               (remove-complete-lines)) *events*) ;; execute later
       (hilight-complete-lines)
-      (format t "Hilightin completed lines~%")
+      (format t "Hilighting completed lines~%")
       (funcall *shape-touched-callback* ; a cool animation 
                '*))))
 
@@ -333,6 +366,10 @@
   (game-tick 0 -1))
 (defun stop ()
   (game-tick 0 0))
+(defun drop-down ()
+  (format t "Dropping down ~%")
+  (loop while *curr-shape*
+     do (game-tick 0 1)))
 
 (defun rotate ()
   (rotate-shape)
@@ -343,6 +380,7 @@
                         0.999)))
 
 (defun game-tick (d-x d-y)
+  (format t "~a~%" (multiple-value-list (tetris:get-ghost-shape-cords)))
   (bt:with-lock-held (*lock*)
     (execute-all-events)
     (when (null *curr-shape*)

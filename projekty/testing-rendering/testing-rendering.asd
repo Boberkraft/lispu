@@ -10,6 +10,8 @@
                #:nineveh
                #:livesupport
                #:cepl.skitter.sdl2
+               #:harmony-simple
+               #:harmony-out123
                )
   :components ((:file "package")
                (:file "testing-rendering")

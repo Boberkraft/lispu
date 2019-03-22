@@ -33,7 +33,7 @@
 (defparameter *animation-color* (get-color-v-for-block 'grey))
 
 (defparameter *time-before-draw* (now))
-
+(defparameter *is-music-playing* t)
 (defun get-color-v-for-block (sym)
   (case sym
     (tetris:A (v! 0.27 0.54 0.4 ))
@@ -48,6 +48,7 @@
     (tetris:* (v! 1    0    0   ))
     (tetris:- (v! 1.01 0.50 1.00))
     (grey     (v! 0.1  0.1  0.1))
+    (+        (v! 0.05a  0.05  0.05))
     (otherwise (error  (format nil "color for block: ~a not found!" sym)))))
 
 (defun-g some-vert-stage-z ((vert g-pnt)
@@ -151,6 +152,15 @@
   (when (keyboard-button (keyboard) key.d)
     (tetris:right)
     (stepper-reset))
+  (when (keyboard-button (keyboard) key.space)
+    (tetris:drop-down)
+    (stepper-reset))
+  (when (keyboard-button (keyboard) key.p)
+    (if *is-music-playing*
+        (harmony-simple:stop)
+        (harmony-simple:start))
+    (setf *is-music-playing* (not *is-music-playing*))
+    (stepper-reset))
   (when (and (keyboard-button (keyboard) key.r)
              (not *rotate-latch*))
     (tetris:rotate)
@@ -173,6 +183,7 @@
   (draw-wall tetris:+width+  tetris:+height+
              *animation-color*
              *animation-timer*)
+  
   ;; draw current shape
   (loop for row below (length tetris:*curr-shape*)
      do (loop for column below (length (car tetris:*curr-shape*))
@@ -184,6 +195,20 @@
                         (+ tetris:*curr-row* row)
                         0
                         (get-color-v-for-block s))))
+  ;; draw ghost shape
+  (multiple-value-bind (ghost-col ghost-row) (tetris:get-ghost-shape-cords)
+    ;;::TODO will it break?
+    (loop for row below (length tetris:*curr-shape*)
+       do (loop for column below (length (car tetris:*curr-shape*))
+             for s = (tetris:symbol-at column
+                                       row
+                                       (tetris:get-current-ghost-shape))
+             when (not (eql s '-))
+             do (draw-box (+ ghost-col column)
+                          (+ ghost-row row)
+                          0
+                          (v:* (get-color-v-for-block (tetris:get-current-color))
+                               0.1)))))
   ;; draw map
   (loop for row below tetris:+height+
      do (loop for column below tetris:+width+
@@ -243,6 +268,8 @@
 
 (defun init ()
   (setf tetris:*shape-touched-callback* #'set-shape-animation-timer)
+  (harmony-simple:initialize :output-spec '(harmony-out123:out123-drain))
+  (harmony-simple:play #p"banks.mp3" :music)
   (unless *buf-stream*
     (destructuring-bind (vert index)
         (nineveh.mesh.data.primitives:box-gpu-arrays)
@@ -259,3 +286,7 @@
   (tetris:create-computer)
   (loop while (not tetris:*game-over*)
      do (draw)))
+
+
+
+
