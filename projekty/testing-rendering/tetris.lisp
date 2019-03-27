@@ -1,12 +1,6 @@
 
-
-(ql:quickload :bt-semaphore)
-(ql:quickload :cepl.sdl2)
-(ql:quickload :livesupport)
 (defpackage #:tetris
   (:use :bt-semaphore
-        :cepl.sdl2
-        :livesupport
         :cl)
   (:export :+width+
            :+height+
@@ -62,7 +56,6 @@
         *game-over* nil
         *hilighted-rows* nil
         *difficulty* 1))
-
 
 (push '(o . (((a a)
               (a a))
@@ -380,7 +373,7 @@
                         0.999)))
 
 (defun game-tick (d-x d-y)
-  (format t "~a~%" (multiple-value-list (tetris:get-ghost-shape-cords)))
+  
   (bt:with-lock-held (*lock*)
     (execute-all-events)
     (when (null *curr-shape*)
