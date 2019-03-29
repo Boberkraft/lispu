@@ -2,7 +2,6 @@
 
 (defpackage #:testing-rendering
   (:use #:cl
-
         #:cepl
         #:rtg-math
         #:nineveh
@@ -16,6 +15,7 @@
 (in-package :testing-rendering)
 
 #+nil (progn
+        (swank:set-default-directory "c:\\Users\\Bobi\\Desktop\\lispu\\projekty\\testing-rendering\\")
         (push #p"C:/Users/Bobi/Desktop/lispu/projekty/testing-rendering/" asdf:*central-registry*)
         (ql:quickload :testing-rendering)
         (in-package #:testing-rendering))
@@ -26,10 +26,11 @@
 (defparameter *rotate-latch* nil)
 (defparameter *animation-timer* 0)
 (defparameter *time-before-draw* (now))
-(defparameter *animation-color* (get-color-v-for-block 'grey))
+(defparameter *animation-color* (get-color-v-for-block '+))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;; TETRIS BLOCKS
+
 (defun-g some-vert-stage-z ((vert g-pnt)
                             &uniform (now :float)
                             (perspective :mat4)
@@ -66,8 +67,8 @@
   (some-vert-stage-z g-pnt)
   (some-frag-stage :vec3))
 
-
 ;;;;;;;;;;;;;;;;;;;; BACKGROUND
+
 (defun-g wall-vert-stage ((vert g-pnt)
                           &uniform (now :float)
                           (perspective :mat4)
@@ -106,11 +107,7 @@
 (defpipeline-g wall-pipeline ()
   (wall-vert-stage g-pnt)
   (wall-frag-stage :vec2))
-
-
-
-
-
+;;;;; 
 (defun my-tr (x y z)
   "Translation function that puts stuff at the back"
   (v! (v:+ (v! -4.5 10)
@@ -157,13 +154,13 @@
   (setf (resolution (current-viewport))
         (surface-resolution (current-surface (cepl-context))))
   (clear)
+
   (when (stepper-can-p)
     (advanced-repl))
-  
   (draw-wall tetris:+width+  tetris:+height+
              *animation-color*
              *animation-timer*)
-  
+
   ;; draw current shape
   (loop for row below (length tetris:*curr-shape*)
      do (loop for column below (length (car tetris:*curr-shape*))
@@ -243,6 +240,8 @@
 
 (defun set-shape-animation-timer (shape-color)
   (format t "Setting new animation: ~a~%" shape-color)
+  (format t "Playing sound~%")
+  (sounds:play-hit-sound)
   (setf *animation-timer* 0f0
         *animation-color* (get-color-v-for-block shape-color))
   )
@@ -250,6 +249,7 @@
 (defun init ()
   (setf tetris:*shape-touched-callback* #'set-shape-animation-timer)
   (sounds:init-sound-system)
+  (sounds:play-background-music)
   ;;
   (unless *buf-stream*
     (destructuring-bind (vert index)

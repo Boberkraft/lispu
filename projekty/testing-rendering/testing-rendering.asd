@@ -18,8 +18,9 @@
                #:tetris
                )
   :components (
-               (:file "testing-rendering")
                (:file "sounds")
-               (:file "utils")))
+               (:file "utils")
+               (:file "testing-rendering" )
+               ))
 
 

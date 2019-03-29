@@ -1,5 +1,3 @@
-
-
 (defpackage #:sounds
   (:use :cl
         :harmony-simple)
@@ -10,33 +8,40 @@
            :resume
            :pausedp
            :toggle-on-off))
+(in-package :sounds)
 
-(in-package #:sounds)
+(defvar *background-music* nil)
+(defvar *hit-sound* nil)
 
+(defparameter *stopped* nil)
+(defparameter *is-background-playing* nil)
+(defparameter *background-source* nil)
 
-
-(defvar *background-music*
-  (harmony-simple:decode #p"banks.mp3"))
-
-(defvar *hit-sound*
-  (harmony-simple:decode #p"kick.mp3"))
+;;TODO: MAKE IT IN BUFFERS AAAAAA
 
 (defun pausedp ()
-  (harmony-simple:paused-p))
+  *stopped*)
 
 (defun init-sound-system ()
-  (harmony-simple:initialize :output-spec '(harmony-out123:out123-drain)))
-
+  (harmony-simple:initialize :output-spec '(harmony-out123:out123-drain))
+  )
 
 (defun play-background-music ()
-  (harmony-simple:play 'harmony:buffer-source :music :loop t :buffers *background-music*)
-  (setf *was-background-playing* t))
+  (when (and (not *is-background-playing*)
+             (not *stopped*))
+    (setf *background-source* (harmony-simple:play #p"Chipzel To The Sky.mp3" :music))
+    (setf *is-background-playing* t)))
 
 (defun stop ()
-  (harmony-simple:stop))
+  (setf *stopped* t)
+  (when *background-source*
+    (harmony-simple:pause *background-source*)))
 
 (defun resume ()
-  (harmony-simple:resume))
+  (setf *stopped* nil)
+  (when *background-source*
+    (harmony-simple:resume *background-source*)))
+
 
 (defun toggle-on-off ()
   "Toggles between ON and OFF.
@@ -47,4 +52,4 @@
 
 (defun play-hit-sound ()
   "The sound of block hitting"
-  (harmony-simple:play 'harmony:buffer-source :sfx :buffers *hit-sound*))
+  (harmony-simple:play #p"kick.mp3" :sfx))
