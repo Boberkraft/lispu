@@ -172,6 +172,24 @@
                         (+ tetris:*curr-row* row)
                         0
                         (get-color-v-for-block s))))
+
+  ;; draw 2 next shapes
+  (let ((offset 1))
+    (loop
+       for num below 2
+       for shape in (tetris:get-shape-queue)
+       do (progn (loop for row below (length shape)
+                    do (loop for column below (length (car shape))
+                          for s = (tetris:symbol-at column
+                                                    row
+                                                    shape)
+                          when (not (eql s '-))
+                          do (draw-box (+ tetris:+width+ column 1)
+                                       (+ row 1 offset )
+                                       0
+                                       (get-color-v-for-block s))))
+                 (setf offset (+ 1 offset (length shape))))))
+
   ;; draw ghost shape
   (when tetris:*curr-shape*
     (multiple-value-bind (ghost-col ghost-row) (tetris:get-ghost-shape-cords)
@@ -199,6 +217,7 @@
                      '(draw-box column row -2 (get-color-v-for-block '-))
                      (draw-box column row 0 (get-color-v-for-block s)))))
   (swap))
+
 
 (defun draw-wall (width height color time)
 

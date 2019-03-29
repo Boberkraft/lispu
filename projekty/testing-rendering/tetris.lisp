@@ -18,9 +18,10 @@
            :get-current-color
            :rotate
            :create-computer
-           :*shape-touched-callback*
+           :*shape-touched-callback*ss
            :a :b :c :d :e :f :g :h :x :* :-
            :SYMBOL-AT
+           :get-shape-queue
            ))
 
 (in-package #:tetris)
@@ -33,6 +34,8 @@
                                   collect '-)) "List of lists representing map")
 
 (defparameter *shapes* nil "Alist containing all of the shapes.")
+(defparameter *shape-queue* nil "List containing next 5 pieces")
+(defparameter *shape-number-queue* nil "List containing next 5 pieces")
 
 (defparameter *curr-shape* nil)
 (defparameter *curr-shape-number* nil)
@@ -43,6 +46,7 @@
 (defparameter *events* nil)
 (defparameter *lock* (bt:make-lock))
 (defparameter *difficulty* 1)
+
 (defparameter *shape-touched-callback* (lambda (piece-color)
                                          (declare (ignore piece-color))
                                          nil))
@@ -101,12 +105,21 @@
 (defun color-shape (shape for)
   (subst for 'x shape))
 
-(defun get-random-shape ()
+
+(defun get-random-shape-number ()
   (let* ((num-of-shapes (length *shapes*))
          (choice (random num-of-shapes)))
-    (values (get-shape choice)
-            choice)))
+    choice))
 
+(defun populate-shape-queue ()
+  (setf *shape-queue* (loop for x below 5
+                         collect (get-shape (get-random-shape-number)))
+        *shape-number-queue* (loop for x below 5
+                                collect (get-random-shape-number))))
+(populate-shape-queue) ;; TODO: into init
+
+(defun get-shape-queue ()
+  *shape-queue*)
 ;; ref by number
 (defmethod get-shape ((num number))
   (cadr (nth num *shapes*)))
@@ -258,13 +271,24 @@
                                *map*)
                     '-))))
 
+(defun put-shape-into-queue (shape number)
+  "Puts new shape at the end, removes first"
+  (setf *shape-queue* (append (rest *shape-queue*) (list shape))
+        *shape-number-queue* (append (rest *shape-number-queue*) (list number))))
 
 (defun generate-new-piece ()
-  (format t "Generating new piece.~%")
-  (multiple-value-setq (*curr-shape* *curr-shape-number*)
-    (get-random-shape))
+  (format t "Setting new piece.~%")
+  ;; sets piece
+  (setf *curr-shape-number* (first *shape-number-queue*)
+        *curr-shape* (first *shape-queue*))
   (setf *curr-column* (floor (/ +width+ 2))
-        *curr-row* 0))
+        *curr-row* 0)
+  ;; removes piece and generates new
+  (let* ((new-shape-num  (get-random-shape-number))
+         (new-shape (get-shape new-shape-num)))
+    (format t "Generating new piece. ~%")
+    (put-shape-into-queue new-shape new-shape-num))
+  )
 
 (defun remove-curr-shape-from-map ()
   (remove-shape-from-map *curr-shape* *curr-column* *curr-row*))
