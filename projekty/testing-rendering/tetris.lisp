@@ -9,6 +9,7 @@
            :*curr-column*
            :*map*
            :*game-over*
+           :*shape-touched-callback*
            :left
            :right
            :down
@@ -18,10 +19,10 @@
            :get-current-color
            :rotate
            :create-computer
-           :*shape-touched-callback*ss
            :a :b :c :d :e :f :g :h :x :* :-
            :SYMBOL-AT
            :get-shape-queue
+           
            ))
 
 (in-package #:tetris)
@@ -106,20 +107,12 @@
   (subst for 'x shape))
 
 
-(defun get-random-shape-number ()
-  (let* ((num-of-shapes (length *shapes*))
-         (choice (random num-of-shapes)))
-    choice))
 
-(defun populate-shape-queue ()
-  (setf *shape-queue* (loop for x below 5
-                         collect (get-shape (get-random-shape-number)))
-        *shape-number-queue* (loop for x below 5
-                                collect (get-random-shape-number))))
-(populate-shape-queue) ;; TODO: into init
 
-(defun get-shape-queue ()
-  *shape-queue*)
+(defun get-shape-queue (&optional (limit nil))
+  (if limit
+      (subseq *shape-queue* 0 limit)
+      *shape-queue*))
 ;; ref by number
 (defmethod get-shape ((num number))
   (cadr (nth num *shapes*)))
@@ -136,6 +129,19 @@
 
 (defun get-current-color ()
   (get-color *curr-shape-number*))
+
+(defun get-random-shape-number ()
+  (let* ((num-of-shapes (length *shapes*))
+         (choice (random num-of-shapes)))
+    choice))
+
+(defun populate-shape-queue ()
+  (setf *shape-queue* (loop for x below 5
+                         collect (get-shape (get-random-shape-number)))
+        *shape-number-queue* (loop for x below 5
+                                collect (get-random-shape-number))))
+(populate-shape-queue) ;; TODO: into init
+
 
 (flet ((help-get-ghost-shape (shape-list)
          "Replaces all colors with '+"
