@@ -1,6 +1,7 @@
 (defpackage #:utils
   (:use :cl
-        :rtg-math)
+        :rtg-math
+        )
   (:export :stepper-can-p
            :stepper-reset
            :now
@@ -49,3 +50,51 @@
 (defun now ()
   (/ (float (get-internal-real-time))
      500))
+
+
+'(on-key-up skitter.glop.keys:key.t
+             #'test)
+
+'(on-key-down skitter.glop.keys:key.g
+             (lambda (&rest xd)
+               (test-down xd)))
+
+(defparameter *active-listeners* nil "Alist containing  pairs KEY . (FUNCTION EVENT-LISTINER)")
+
+(defun add-event-listener-to-system (key callback special-callback)
+  "adds event to system, replacing old both use the same calback function"
+  ;; make event
+  (let ((listener (skitter:listen-to
+                         (skitter:make-event-listener special-callback
+                                                      ;; see on-key-up
+                                                      ;; or on-key-down
+                                                      )
+                         (skitter:keyboard 0)
+                         :button key)))
+    ;;delete old
+    (let ((value (assoc key *active-listeners*)))
+      (when (eql (first value);; check if functions are queal
+                 callback)  ;; if yes, remove
+        (progn (setf *active-listeners*
+                     (remove key *active-listeners* :key #'car))))) ; remove old
+    (push (cons key (list callback listener)) *active-listeners*))) ; add new
+
+
+(defun on-key-up (key callback)
+  "Calls callback when key is unpressed. "
+  (add-event-listener-to-system key
+                                callback
+                                (lambda (pressed &rest rest)
+                                  (when (not pressed)
+                                    (funcall callback rest)))))
+
+(defun on-key-down (key callback)
+  "Calls callback when key is first time pressed. Resets on unpressing"
+  (add-event-listener-to-system key
+                                callback
+                                (let ((last-time nil)) ;; stores last value of pressed
+                                  (lambda (pressed &rest rest)
+                                    (when (and (not last-time)
+                                               pressed)
+                                      (funcall callback rest))
+                                    (setf last-time pressed)))))
