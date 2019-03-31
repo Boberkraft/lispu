@@ -12,6 +12,7 @@
                #:nineveh
                #:livesupport
                #:cepl.skitter.sdl2
+               #:skitter.glop
                #:harmony-simple
                #:harmony-out123
                #:bt-semaphore

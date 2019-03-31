@@ -40,7 +40,7 @@
 (defun resume ()
   (setf *stopped* nil)
   (when *background-source*
-    (harmony-simple:resume *background-source*)))
+    (harmony:resume *background-source*))) #FIXME: DISTORTION!
 
 
 (defun toggle-on-off ()

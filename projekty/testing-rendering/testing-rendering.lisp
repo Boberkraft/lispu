@@ -10,6 +10,7 @@
         #:cepl.skitter.sdl2
         #:livesupport
         #:utils
+        
         ))
 
 (in-package :testing-rendering)
@@ -115,6 +116,8 @@
                (* -1 y)))
       (+ -10 z)))
 
+;; ------    PLAYER INPUT
+
 
 (defun advanced-repl ()
   "Handles user input"
@@ -129,21 +132,19 @@
   ;; RIGHT
   (when (keyboard-button (keyboard) key.d)
     (tetris:right)
-    (stepper-reset))
-  ;; DROP DOWN
-  (when (keyboard-button (keyboard) key.space)
-    (tetris:drop-down)
-    (stepper-reset))
-  ;; ROTATE SHAPE
-  (when (and (keyboard-button (keyboard) key.r)
-             (not *rotate-latch*))
-    (tetris:rotate)
-    (setf *rotate-latch* nil)
-    (stepper-reset))
-  ;; PAUSE MUSIC
-  (when (keyboard-button (keyboard) key.m)
-    (sounds:toggle-on-off)))
+    (stepper-reset)))
 
+(defun rotate ()
+  (format t "Rotating ~%")
+  (tetris:rotate))
+
+(defun drop-down ()
+  (tetris:drop-down))
+
+(defun toggle-on-off ()
+  (sounds:toggle-on-off))
+
+;;;;;;;;; --------  DRAWNINI
 (defun draw ()
   (step-host)
   (let ((now (now)))
@@ -157,6 +158,7 @@
 
   (when (stepper-can-p)
     (advanced-repl))
+
   (draw-wall tetris:+width+  tetris:+height+
              *animation-color*
              *animation-timer*)
@@ -177,7 +179,8 @@
   (let ((offset 1))
     (loop
        for num below 2
-       for shape in (tetris:get-shape-queue)
+       for shape in (tetris:get-shape-queue 2)
+       ;; TODO maybe it might now work?
        do (progn (loop for row below (length shape)
                     do (loop for column below (length (car shape))
                           for s = (tetris:symbol-at column
@@ -265,10 +268,17 @@
         *animation-color* (get-color-v-for-block shape-color))
   )
 
+
 (defun init ()
   (setf tetris:*shape-touched-callback* #'set-shape-animation-timer)
   (sounds:init-sound-system)
   (sounds:play-background-music)
+
+  ;; init input
+
+  (on-key-down key.space 'drop-down)
+  (on-key-down key.r 'rotate)
+  (on-key-down key.m 'toggle-on-off)
   ;;
   (unless *buf-stream*
     (destructuring-bind (vert index)
