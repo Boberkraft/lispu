@@ -7,7 +7,8 @@
            :play-hit-sound
            :resume
            :pausedp
-           :toggle-on-off))
+           :toggle-on-off
+           :change-volume))
 (in-package :sounds)
 
 (defvar *background-music* nil)
@@ -16,32 +17,43 @@
 (defparameter *stopped* nil)
 (defparameter *is-background-playing* nil)
 (defparameter *background-source* nil)
-
+(defparameter *server* nil)
+(defparameter *volume* 1 "From 0 to 1")
 ;;TODO: MAKE IT IN BUFFERS AAAAAA
 
 (defun pausedp ()
   *stopped*)
 
 (defun init-sound-system ()
-  (harmony-simple:initialize :output-spec '(harmony-out123:out123-drain))
-  )
+  (setf *server* (harmony-simple:initialize)))
 
 (defun play-background-music ()
   (when (and (not *is-background-playing*)
              (not *stopped*))
-    (setf *background-source* (harmony-simple:play #p"Chipzel To The Sky.mp3" :music))
-    (setf *is-background-playing* t)))
+    (setf *background-source* (harmony-simple:play #p"chibi-tech Smugface Mafia.mp3" :music))
+    (setf *is-background-playing* t)
+    (reload-volume)))
 
 (defun stop ()
   (setf *stopped* t)
   (when *background-source*
-    (harmony-simple:pause *background-source*)))
+    (harmony:pasue *background-source*)))
 
 (defun resume ()
-  (setf *stopped* nil)
-  (when *background-source*
-    (harmony:resume *background-source*))) #FIXME: DISTORTION!
+  (when *stopped*
+    (play-background-music))
+  (setf *stopped* nil))
 
+(defun change-volume (val)
+  (setf *volume* (cond ((> val 1) 1)
+                       ((< val 0) 0)
+                       (t val)))
+  (reload-volume))
+
+(defun reload-volume ()
+  "Setf *volume* to current background"
+  (setf (harmony-simple:volume *background-source*)
+        *volume*))
 
 (defun toggle-on-off ()
   "Toggles between ON and OFF.
