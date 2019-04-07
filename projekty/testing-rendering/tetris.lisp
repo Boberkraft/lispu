@@ -1,194 +1,212 @@
 
 (defpackage #:tetris
-  (:use :bt-semaphore
-        :cl)
+  (:use #:bt-semaphore
+        #:cl
+        #:tetris-structures)
   (:export :+width+
            :+height+
-           :*curr-shape*
-           :*curr-row*
-           :*curr-column*
-           :*map*
-           :*game-over*
-           :*shape-touched-callback*
+           :game-state
+           :*game-state*
+           :*callbacks*
+           :*misc*
            :left
            :right
            :down
+           :init-tetris
+           :reinit-tetris
+           :create-player-and-reinit
            :drop-down
-           :get-ghost-shape-cords
-           :get-current-ghost-shape
+           :get-current-colored-shape
+           :get-ghost-piece
+           :get-current-ghost-piece
            :get-current-color
+           :get-colored-shape
            :rotate
            :create-computer
            :a :b :c :d :e :f :g :h :x :* :-
-           :SYMBOL-AT
-           :get-shape-queue
-           
+           :symbol-at
+           :get-next-pieces
+           :get-current-shape
+           :game-map
+           :create-map
+           :new-player
            ))
 
-(in-package #:tetris)
+(in-package :tetris)
 
 (defvar +width+ 10 "width of the map")
 (defvar +height+ 20 "height of the map")
 
-(defparameter *map* (loop for rows below +height+
-                       collect (loop for column below +width+
-                                  collect '-)) "List of lists representing map")
+(defvar *pieces* nil "contains all of the available pieces")
+(defparameter *game-state* nil)
+(defparameter *callbacks* nil "see game-state")
+(defparameter *misc* nil "see game-state")
 
-(defparameter *shapes* nil "Alist containing all of the shapes.")
-(defparameter *shape-queue* nil "List containing next 5 pieces")
-(defparameter *shape-number-queue* nil "List containing next 5 pieces")
-
-(defparameter *curr-shape* nil)
-(defparameter *curr-shape-number* nil)
-(defparameter *curr-column* nil)
-(defparameter *curr-row* nil)
-(defparameter *hilighted-rows* nil)
-(defparameter *game-over* nil)
-(defparameter *events* nil)
-(defparameter *lock* (bt:make-lock))
-(defparameter *difficulty* 1)
-
-(defparameter *shape-touched-callback* (lambda (piece-color)
-                                         (declare (ignore piece-color))
-                                         nil))
 
 (defun init-tetris ()
-  (setf *map* (loop for rows below +height+
-                 collect (loop for column below +width+
-                            collect '-))
-        *curr-shape* nil
-        *events* nil
-        *game-over* nil
-        *hilighted-rows* nil
-        *difficulty* 1))
+  "Inits new game"
+  (loop for piece in
+     (list (make-piece
+            :name 'o
+            :color 'a
+            :shape '((x x)
+                     (x x)))
+           (make-piece
+            :name 't
+            :color 'b
+            :shape '((x x x)
+                     (- x -)))
+           (make-piece
+            :name 'j
+            :color 'c
+            :shape '((- x)
+                     (- x)
+                     (x x)))
+           (make-piece
+            :name 'z-inf
+            :color 'd
+            :shape '((- x x)
+                     (x x -)))
+           (make-piece
+            :name 'l
+            :color 'e
+            :shape '((x -)
+                     (x -)
+                     (x x)))
+           (make-piece
+            :name 'o
+            :color 'f
+            :shape '((x x -)
+                     (- x x)))
+           (make-piece
+            :name 'i
+            :color 'g
+            :shape '((x -)
+                     (x -)
+                     (x -)
+                     (x -))))
+     do (push piece *pieces*)))
 
-(push '(o . (((a a)
-              (a a))
-             a)) *shapes*)
+(init-tetris)
 
-(push '(t . (((b b b)
-              (- b -))
-             b)) *shapes*)
+(defun create-player-and-reinit ()
+  "Creates new game-state and returns it."
+  (progn
+   (reinit-tetris (make-instance 'game-state))
+   (setf (game-map *game-state*) (create-map))
+   (populate-next-pieces)
+   *game-state*))
 
-(push '(j . (((- c)
-              (- c)
-              (c c))
-             c)) *shapes*)
+(defun reinit-tetris (game-state)
+  "Reinits variables to point at game-state"
+  (setf *game-state* game-state
+        *callbacks* (callbacks *game-state*)
+        *misc* (misc *game-state*)))
 
-(push '(z . (((- d d)
-              (d d -))
-             d)) *shapes*)
+(defun create-map ()
+  (loop for rows below +height+
+     collect (loop for column below +width+
+                collect '-)))
 
-(push '(z-inv . (((e e -)
-                  (- e e))
-                 e)) *shapes*)
 
-(push '(l . (((f -)
-              (f -)
-              (f f))
-             f)) *shapes*)
-
-(push '(i . (((g -)
-              (g -)
-              (g -)
-              (g -))
-             g)) *shapes*)
-
-#+nil(push '(duzy-kloc . (((- a e)
-                      (- b f)
-                      (- c g)
-                      (- d *))
-                     * )) *shapes*)
+(defun get-current-shape ()
+  (when (curr-piece *game-state*)
+    (piece-shape (curr-piece *game-state*))))
 
 (defun get-current-colored-shape ()
-  (color-shape *curr-shape* (get-color *curr-shape-number*)))
+  "Returns colored shape or nil"
+  (when (curr-piece *game-state*)
+    (get-colored-shape (curr-piece *game-state*))))
 
-(defun color-shape (shape for)
-  (subst for 'x shape))
+(defmethod get-colored-shape ((piece piece))
+  "returns 'x replaces with color. Not in place!"
+  (subst (piece-color piece) 'x (piece-shape piece)))
 
-
-
-
-(defun get-shape-queue (&optional (limit nil))
+(defun get-next-pieces (&key (limit nil))
   (if limit
-      (subseq *shape-queue* 0 limit)
-      *shape-queue*))
-;; ref by number
-(defmethod get-shape ((num number))
-  (cadr (nth num *shapes*)))
+      (subseq (next-pieces *game-state*) 0 limit)
+      (next-pieces *game-state*)))
 
-;; ref by letter
-(defmethod get-shape ((s symbol))
-  (cadr (assoc s *shapes*)))
+(defmethod get-piece ((s symbol))
+  "By name"
+  (find-if (lambda (piece)
+             (eql (piece-name piece)
+                  s))
+           *pieces*))
 
-(defmethod get-color ((num number))
-  (caddr (nth num *shapes*)))
+(defmethod get-piece ((num number))
+  "By number"
+  (nth num *pieces*))
 
-(defmethod get-color ((s symbol))
-  (caddr (assoc s *shapes*)))
 
 (defun get-current-color ()
-  (get-color *curr-shape-number*))
+  (piece-color (curr-piece *game-state*)))
 
-(defun get-random-shape-number ()
-  (let* ((num-of-shapes (length *shapes*))
-         (choice (random num-of-shapes)))
+(defun get-random-piece-number ()
+  (let* ((num-of-pieces (length *pieces*))
+         (choice (random num-of-pieces)))
     choice))
 
-(defun populate-shape-queue ()
-  (setf *shape-queue* (loop for x below 5
-                         collect (get-shape (get-random-shape-number)))
-        *shape-number-queue* (loop for x below 5
-                                collect (get-random-shape-number))))
-(populate-shape-queue) ;; TODO: into init
+(defun get-random-piece ()
+  (get-piece (get-random-piece-number)))
+
+(defun populate-next-pieces ()
+  (setf (next-pieces *game-state*)
+        (loop for x below 5
+           collect  (get-random-piece))))
 
 
-(flet ((help-get-ghost-shape (shape-list)
-         "Replaces all colors with '+"
-         (subst-if '+ (lambda (symbol)
-                        (if (and (not (eql symbol '-))
-                                 (not (listp symbol)))
-                            t))
-                   shape-list)))
-  (defmethod get-ghost-shape ((s symbol))
-    (help-get-ghost-shape (get-shape s)))
-  (defmethod get-ghost-shape ((n number))
-    (help-get-ghost-shape (get-shape n)))
-  (defun get-current-ghost-shape ()
-    (help-get-ghost-shape *curr-shape*)))
 
 
-(defun get-ghost-shape-cords ()
-  "Returns (VALUES X Y) that's are cords for ghost shape
+(defun get-current-ghost-piece ()
+  "Returns piece with set column and row slots that's are cords for ghost piece's shape
    or nil"
-  (let ((ghost-shape (get-current-ghost-shape)))
-    (loop for row from *curr-row* to +height+ ; to should be -1, but it doesnt mater
-       when (or (will-shape-touch-others ghost-shape *curr-column* row)
-                 (will-shape-touch-floor ghost-shape *curr-column* row))
-       do (return-from get-ghost-shape-cords
-            (values *curr-column*
-                    (1- row)))))
-  nil)
+  (let ((ghost-shape (piece-shape (curr-piece *game-state*)))
+        (ghost-piece (copy-piece (curr-piece *game-state*))) ;; Cords to be changed
+        (curr-row (curr-row *game-state*))
+        (curr-column (curr-column *game-state*)))
+    (loop for row from curr-row to +height+ ; goes down
+       when (or (will-shape-touch-others ghost-shape curr-column row)
+                (will-shape-touch-floor ghost-shape curr-column row))
+       do (return-from get-current-ghost-piece
+            (progn 
+              (setf (piece-column ghost-piece) curr-column
+                    (piece-row ghost-piece) (1- row))
+              ghost-piece)))
+    nil))
 
 ;; '((- x -)(x x x)(x x x)) => '((x x -)(x x x)(x x -))
 ;;
 ;;    - x -        x x -
 ;;    x x x   ->   x x x
 ;;    x x x        x x -
-(defun rotate-h (shape)
-  (when shape
-    (mapcar 'reverse
-            (apply #'mapcar #'list shape))))
+(defmethod rotated-piece ((piece piece))
+  "Returns new rotated piece"
+  (let ((copy (copy-piece piece)))
+    (setf (piece-shape copy)
+          (mapcar 'reverse
+                  (apply #'mapcar #'list (piece-shape copy))))
+    copy))
 
-(defun rotate-shape ()
-  (let ((rotated (rotate-h *curr-shape*)))
-    (unless (or (will-shape-touch-others rotated *curr-column* *curr-row*)
-                (will-shape-touch-floor rotated *curr-column* *curr-row*)
-                (will-shape-touch-walls rotated *curr-column* *curr-row*))
-      (setf *curr-shape* rotated))))
+(defmethod rotated-piece ((piece null))
+  nil)
+
+(defun rotate-current-piece ()
+  "Rotates curren piece. Does nothing when nil"
+  (when (null (curr-piece *game-state*))
+    (return-from rotate-current-piece nil))
+  (let* ((rotated-piece (rotated-piece (curr-piece *game-state*)))
+         (shape (piece-shape rotated-piece)))
+    (unless (or (will-shape-touch-others shape (curr-column *game-state*) (curr-row *game-state*))
+                (will-shape-touch-floor shape (curr-column *game-state*) (curr-row *game-state*))
+                (will-shape-touch-walls shape (curr-column *game-state*) (curr-row *game-state*)))
+      (setf (curr-piece *game-state*)
+            rotated-piece))))
 
 
 (defmacro symbol-at (col row 2d-list &optional check)
+  "Checks if col and row are out of bouds. If check is false, then this think can be used for
+  (setf (symbol-at [...]) something)"
   (if check
       `(if (or (< ,col 0)
                (< ,row 0)
@@ -208,7 +226,7 @@
                                             shape t)
            for map-symbol-at = (symbol-at (+ column start-col)
                                           (+ row start-row)
-                                          *map* t)
+                                          (game-map *game-state*) t)
            when (and (not (eql shape-symbol-at '-))
                      (not (eql map-symbol-at '-)))
            do (progn
@@ -222,7 +240,7 @@
   (loop for row from (1- (length shape)) downto 0
      when (find-if (lambda (symbol-at) (not (eql '- symbol-at)))
                    (nth row shape)) ; block starts on this row
-     do (return-from will-shape-touch-floor 
+     do (return-from will-shape-touch-floor
           (<= +height+ (+ start-row row)))))
 
 (defun will-shape-touch-walls (shape start-col start-row)
@@ -258,10 +276,10 @@
                      ;; checks whatever symbol is stil inbouds of map
                      (not (null (symbol-at (+ start-col column)
                                            (+ start-row row)
-                                           *map* t))))
+                                           (game-map *game-state*) t))))
            do (setf (symbol-at (+ start-col column)
                                (+ start-row row)
-                               *map*)
+                               (game-map *game-state*))
                     shape-symbol))))
 
 
@@ -274,42 +292,43 @@
            when (not (eq shape-symbol '-)) ;; eq. 'x. Byp
            do (setf (symbol-at (+ start-col column)
                                (+ start-row row)
-                               *map*)
+                               (game-map *game-state*))
                     '-))))
 
-(defun put-shape-into-queue (shape number)
-  "Puts new shape at the end, removes first"
-  (setf *shape-queue* (append (rest *shape-queue*) (list shape))
-        *shape-number-queue* (append (rest *shape-number-queue*) (list number))))
+(defun add-new-next-piece (piece)
+  "Puts new piece at the end of queue, removes first piece"
+  (setf (next-pieces *game-state*) (append (rest (next-pieces  *game-state*))
+                                           (list piece))))
 
 (defun generate-new-piece ()
-  (format t "Setting new piece.~%")
+  (format t "~%Setting new piece.")
   ;; sets piece
-  (setf *curr-shape-number* (first *shape-number-queue*)
-        *curr-shape* (first *shape-queue*))
-  (setf *curr-column* (floor (/ +width+ 2))
-        *curr-row* 0)
+  (setf (curr-piece *game-state*) (first (next-pieces *game-state*)))
+  ;; center
+  (setf (curr-column *game-state*) (floor (/ +width+ 2))
+        (curr-row *game-state*) 0)
   ;; removes piece and generates new
-  (let* ((new-shape-num  (get-random-shape-number))
-         (new-shape (get-shape new-shape-num)))
-    (format t "Generating new piece. ~%")
-    (put-shape-into-queue new-shape new-shape-num))
-  )
+  (let* ((new-piece (get-random-piece)))
+    (format t "~%Generating new piece.")
+    (add-new-next-piece new-piece)))
 
-(defun remove-curr-shape-from-map ()
-  (remove-shape-from-map *curr-shape* *curr-column* *curr-row*))
+(defun remove-current-piece-from-map ()
+  (remove-shape-from-map (get-current-colored-shape)
+                         (curr-column *game-state*)
+                         (curr-row *game-state*)
+                         ))
 
-(defun add-curr-shape-to-map ()
+(defun add-current-piece-to-map ()
   (add-shape-to-map (get-current-colored-shape)
-                    *curr-column*
-                    *curr-row*))
+                    (curr-column *game-state*)
+                    (curr-row *game-state*)))
 
 
 (defun test-number-of-complete-lines ()
   (add-shape-to-map '((x x x x x x x x x x x)) 0 8)
   (add-shape-to-map '((x x x x x x x x x x x)) 0 9)
   (show-map)
-  (format t "number of complete lines: ~a " (number-of-complete-lines))
+  (format t "~%number of complete lines: ~a " (number-of-complete-lines))
   '(assert (equal (list 8 9) (number-of-complete-lines))))
 
 (defun number-of-complete-lines ()
@@ -318,6 +337,7 @@
   (length (get-complete-lines)))
 
 (defun get-complete-lines ()
+  "Returns list containing complete lines"
   (let ((lines nil)
         (line-num 0))
     (mapc (lambda (row)
@@ -325,59 +345,65 @@
                          row)
               (push line-num lines))
             (incf line-num))
-          *map*)
+          (game-map *game-state*))
     lines))
 
 (defun hilight-complete-lines ()
+  "Sets new map with hilighted lines. Replaces all not '- with a '* "
   (let* ((lines (get-complete-lines))
          (hilighted-line (loop for x below +width+ collect '*)))
     (mapc (lambda (row-num)
-            (setf (nth row-num *map*)
+            (setf (nth row-num (game-map *game-state*))
                   hilighted-line))
           lines)
     lines))
 
 (defun remove-complete-lines ()
-  (format t "Removing lines~%")
+  "Sets new map wothout completed lines. Removes all not '- in a line"
+  (format t "~%Removing lines")
   (let* ((lines (get-complete-lines)))
-    (setf *map* (append (loop ;add empty lines on top
-                          for y below (length lines) collect (loop for x below +width+ collect '-))
-                       (loop ;collect not empty lines
-                          for row below +height+
-                          when (not (find row lines))
-                          collect (nth row *map*))))))
+    (setf (game-map *game-state*) (append (loop ;add empty lines on top
+                                             for y below (length lines) collect (loop for x below +width+ collect '-))
+                                          (loop ;collect not empty lines
+                                             for row below +height+
+                                             when (not (find row lines))
+                                             collect (nth row (game-map *game-state*)))))))
 
 (defun move-shape (delta-column delta-row)
-  (let ((new-column (+ delta-column *curr-column*))
-        (new-row (+ delta-row *curr-row*)))
-    (cond ((or (will-shape-touch-others *curr-shape* new-column new-row)
-               (will-shape-touch-floor *curr-shape* new-column new-row))
+  (let ((new-column (+ delta-column (curr-column *game-state*)))
+        (new-row (+ delta-row (curr-row *game-state*))))
+    (cond ((or (will-shape-touch-others (piece-shape (curr-piece *game-state*))
+                                        new-column new-row)
+               (will-shape-touch-floor  (piece-shape (curr-piece *game-state*))
+                                        new-column new-row))
            ;;; restart piece --
-           (format t "Floor or piece touched!~%")
-           (add-curr-shape-to-map) ; put piece on the spot
-           (funcall *shape-touched-callback* ; a cool animation 
-                    (get-color *curr-shape-number*))
-           (setf *curr-shape* nil) ;to gen new piece
-           
+           (format t "~%Floor or piece touched!")
+           (add-current-piece-to-map) ; put piece on the spot
+           (funcall (piece-touched *callbacks*) ; a cool animation
+                    (piece-color (curr-piece *game-state*)))
+           (setf (curr-piece *game-state*) nil) ;to gen new piece
+
            )
           ;;; do nothing --
-          ((will-shape-touch-walls *curr-shape* new-column new-row)
-           (format t "Wall touched!~%")
+          ((will-shape-touch-walls (piece-shape (curr-piece *game-state*)) new-column new-row)
+           (format t "~%Wall touched!")
            )
           ;;; move down --
-          (t (setf *curr-row* new-row)
-             (setf *curr-column* new-column)))
+          (t (format t "~%Moving shape [X: ~a] [Y: ~a]" delta-column delta-row)
+             (setf (curr-row *game-state*) new-row)
+             (setf (curr-column *game-state*) new-column)))
     (when (get-complete-lines)
       (push '(lambda ()
-              (remove-complete-lines)) *events*) ;; execute later
+              (remove-complete-lines)) (events *game-state*)) ;; execute later
       (hilight-complete-lines)
-      (format t "Hilighting completed lines~%")
-      (funcall *shape-touched-callback* ; a cool animation 
+      (format t "~%Hilighting completed lines")
+      (funcall (piece-touched *callbacks*) ; a cool animation 
                '*))))
 
 (defun execute-all-events ()
-  (mapc (lambda (event) (funcall (eval event))) *events* )
-  (setf *events* nil))
+  (mapc (lambda (event) (funcall (eval event)))
+        (events *game-state*))
+  (setf (events *game-state*) nil))
 
 (defun left ()
   (game-tick -1 0))
@@ -390,25 +416,28 @@
 (defun stop ()
   (game-tick 0 0))
 (defun drop-down ()
-  (format t "Dropping down ~%")
-  (loop while *curr-shape*
+  (format t "~%Dropping down")
+  (loop while (curr-piece *game-state*)
      do (game-tick 0 1)))
 
 (defun rotate ()
-  (rotate-shape)
+  (rotate-current-piece)
   (game-tick 0 0))
 
 (defun increase-difficulty ()
-  (setf *difficulty* (* *difficulty*
-                        0.999)))
+  (setf (difficulty *game-state*)
+        (* (difficulty *game-state*)
+           0.999)))
 
 (defun game-tick (d-x d-y)
-  
-  (bt:with-lock-held (*lock*)
+
+  (bt:with-lock-held ((lock *misc*))
     (execute-all-events)
-    (when (null *curr-shape*)
+    (when (null (curr-piece *game-state*))
       (generate-new-piece)
-      (when (will-shape-touch-others *curr-shape* *curr-column* *curr-row*)
+      (when (will-shape-touch-others (piece-shape (curr-piece *game-state*))
+                                     (curr-column *game-state*)
+                                     (curr-row *game-state*))
         (game-over-screen)
         (init-tetris)
         (return-from game-tick)))
@@ -418,11 +447,11 @@
     ))
 
 (defun computer-loop ()
-    (loop while (not *game-over*)
-       do (progn (sleep *difficulty*)
-                 (increase-difficulty)
-                 (down)
-                 (show-map))))
+  (loop while (not (game-over *game-state*))
+     do (progn (sleep (game-over *game-state*))
+               (increase-difficulty)
+               (down)
+               (show-map))))
 
 (defun create-computer ()
   (bt:make-thread #'computer-loop))
@@ -436,42 +465,51 @@
        (#\s (down))
        (#\d (right))
        (#\r (rotate))
-       (#\q (return-from simple-repl) (setf *game-over* t)))
+       (#\q (return-from simple-repl) (setf (game-over *game-state*) t)))
      (show-map)))
 
 (defun show (2d-list)
   (labels ((slashes-to-spaces (lst)
              (mapcar (lambda (l) (substitute #\SPACE '- l)) lst)))
-    (format *standard-output* "|~{~a ~}|~%" (loop for i below +width+  collect #\=))
-    (format *standard-output* "~{|~{~a ~}|~%~}" (slashes-to-spaces 2d-list))
-    (format *standard-output* "|~{~a ~}|~%" (loop for i below +width+  collect #\=)))
+    (format *standard-output* "~%|~{~a ~}|" (loop for i below +width+  collect #\=))
+    (format *standard-output* "~{~%|~{~a ~}|~}" (slashes-to-spaces 2d-list))
+    (format *standard-output* "~%|~{~a ~}|" (loop for i below +width+  collect #\=)))
   )
 
 
 (defun show-map ()
-  (format t "Current shape:~%")
-  (show (get-current-colored-shape))
-  (format t "[X: ~a] [Y: ~a]~%" *curr-column* *curr-row*)
-  (add-curr-shape-to-map)
-  (show *map*)
-  (remove-curr-shape-from-map))
+  (format t "~%Current shape:")
+  (if (curr-piece *game-state*)
+      (show (get-current-colored-shape))
+      (format t "NIL"))
+  (format t "~%[X: ~a] [Y: ~a]"
+          (curr-column *game-state*)
+          (curr-row *game-state*))
+  (add-current-piece-to-map)
+  (show (game-map *game-state*))
+  (remove-current-piece-from-map))
 
 (defun game-over-screen ()
-  (setf *game-over* t)
-  (format t "GAME OVER!~%"))
+  (setf (game-over *game-state*) t)
+  (format t "~%GAME OVER!")
+  ;; TODO gamover callback?
+  (setf (game-map *game-state*)
+        (create-map))
+  )
 
 
 
 '(simple-repl)
 
+'(init-tetris)
+
 ;; very cool code!
 ;; (reduce (lambda (list-a new-one)
 ;;           (mapcar (lambda (a b) (append (if (atom b)
-;;                                        (list b)
-;;                                        b)
-;;                                    (if (atom a)
-;;                                        (list a)
-;;                                        a)))
-;;                   list-a new-one))
-;;  '((- x -)(x x x)(x x x)))
-
+;;                                          (list b)
+;;                                          b)
+;;                                      (if (atom a)
+;;                                          (list a)
+;;                                          a)))
+;;                     list-a new-one))
+;;           '((- x -)(x x x)(x x x)))

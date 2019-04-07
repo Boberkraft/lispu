@@ -2,7 +2,7 @@
 
 
 (asdf:defsystem #:testing-rendering
-  :description "System for visualizaion of tetris"
+  :description "System for the graphic part of tetris"
   :author "Andrzej Bisewski <andrzej.bisewski@gmail.com>"
   :license  "you can use, just don't make money of it"
   :version "0.0.1"
@@ -21,7 +21,7 @@
   :components (
                (:file "sounds")
                (:file "utils")
-               (:file "testing-rendering" )
+               (:file "testing-rendering")
+               (:file "tetris-structures")
                ))
-
 

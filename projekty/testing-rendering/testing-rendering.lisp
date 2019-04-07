@@ -10,7 +10,7 @@
         #:cepl.skitter.sdl2
         #:livesupport
         #:utils
-        
+        #:tetris-structures
         ))
 
 (in-package :testing-rendering)
@@ -18,17 +18,25 @@
 #+nil (progn
         (swank:set-default-directory "c:\\Users\\Bobi\\Desktop\\lispu\\projekty\\testing-rendering\\")
         (push #p"C:/Users/Bobi/Desktop/lispu/projekty/testing-rendering/" asdf:*central-registry*)
-        (ql:quickload :testing-rendering)
-        (in-package #:testing-rendering))
+        (ql:quickload :tetris)
+        (in-package #:tetris))
 
 (defvar *buf-stream* nil)
 (defvar *gpu-arr* nil)
+(defparameter *render-state* nil "Instance of rendering-state")
 
-(defparameter *rotate-latch* nil)
-(defparameter *animation-timer* 0)
-(defparameter *time-before-draw* (now))
-(defparameter *animation-color* (get-color-v-for-block '+))
+(defclass render-state ()
+  ((animation-timer
+    :accessor animation-timer
+    :initform 0)
+   (time-before-draw
+    :accessor time-before-draw
+    :initform (now))
+   (animation-color
+    :accessor animation-color
+    :initform (get-color-v-for-block '+))))
 
+(setf *render-state* (make-instance 'render-state))
 
 ;;;;;;;;;;;;;;;;;;;;;;;; TETRIS BLOCKS
 
@@ -135,7 +143,7 @@
     (stepper-reset)))
 
 (defun rotate ()
-  (format t "Rotating ~%")
+  (format t "~%Rotating")
   (tetris:rotate))
 
 (defun drop-down ()
@@ -148,9 +156,9 @@
 (defun draw ()
   (step-host)
   (let ((now (now)))
-    (setf *animation-timer* (+ *animation-timer*
-                               (- now *time-before-draw*))
-          *time-before-draw* now))
+    (setf (animation-timer *render-state*) (+ (animation-timer *render-state*)
+                                              (- now (time-before-draw *render-state*)))
+          (time-before-draw *render-state*) now))
 
   (setf (resolution (current-viewport))
         (surface-resolution (current-surface (cepl-context))))
@@ -160,18 +168,18 @@
     (advanced-repl))
 
   (draw-wall tetris:+width+  tetris:+height+
-             *animation-color*
-             *animation-timer*)
+             (animation-color *render-state*)
+             (animation-timer *render-state*))
 
   ;; draw current shape
-  (loop for row below (length tetris:*curr-shape*)
-     do (loop for column below (length (car tetris:*curr-shape*))
+  (loop for row below (length (tetris:get-current-shape))
+     do (loop for column below (length (car (tetris:get-current-shape)))
            for s = (tetris:symbol-at column
                                      row
-                                     tetris:*curr-shape*)
+                                     (tetris:get-current-colored-shape))
            when (not (eql s '-))
-           do (draw-box (+ tetris:*curr-column* column)
-                        (+ tetris:*curr-row* row)
+           do (draw-box (+ (curr-column tetris:*game-state*) column)
+                        (+ (curr-row tetris:*game-state*) row)
                         0
                         (get-color-v-for-block s))))
 
@@ -179,7 +187,10 @@
   (let ((offset 1))
     (loop
        for num below 2
-       for shape in (tetris:get-shape-queue 2)
+       for shape in (mapcar
+                     (lambda (piece)
+                       (tetris:get-colored-shape piece))
+                     (tetris:get-next-pieces :limit 2))
        ;; TODO maybe it might now work?
        do (progn (loop for row below (length shape)
                     do (loop for column below (length (car shape))
@@ -194,14 +205,17 @@
                  (setf offset (+ 1 offset (length shape))))))
 
   ;; draw ghost shape
-  (when tetris:*curr-shape*
-    (multiple-value-bind (ghost-col ghost-row) (tetris:get-ghost-shape-cords)
+  (when (curr-piece tetris:*game-state*)
+    (let* ((ghost-piece (tetris:get-current-ghost-piece))
+           (ghost-shape (piece-shape ghost-piece))
+           (ghost-col (piece-column ghost-piece))
+           (ghost-row (piece-row ghost-piece)))
       ;;::TODO will it break?
-      (loop for row below (length tetris:*curr-shape*)
-         do (loop for column below (length (car tetris:*curr-shape*))
+      (loop for row below (length (tetris:get-current-shape))
+         do (loop for column below (length (car (tetris:get-current-shape)))
                for s = (tetris:symbol-at column
                                          row
-                                         (tetris:get-current-ghost-shape))
+                                         ghost-shape)
                when (not (eql s '-))
                do (draw-box (+ ghost-col column)
                             (+ ghost-row row)
@@ -213,7 +227,8 @@
      do (loop for column below tetris:+width+
            for s = (tetris:symbol-at column
                                      row
-                                     tetris:*map*)
+                                     (game-map tetris:*game-state*))
+                                     ;; #TODO just create get-current-map etc.
            if (eq s '-)
            do      '(draw-box column row -1 (get-color-v-for-block s))
            else do (progn
@@ -260,17 +275,18 @@
          :block-color color
          ))
 
-(defun set-shape-animation-timer (shape-color)
-  (format t "Setting new animation: ~a~%" shape-color)
+(defun set-background-animation-timer (color)
+  (format t "Setting new animation: ~a~%"color)
   (format t "Playing sound~%")
   (sounds:play-hit-sound)
-  (setf *animation-timer* 0f0
-        *animation-color* (get-color-v-for-block shape-color))
+  (setf (animation-timer *render-state*) 0f0
+        (animation-color *render-state*) (get-color-v-for-block color))
   )
 
 
 (defun init ()
-  (setf tetris:*shape-touched-callback* #'set-shape-animation-timer)
+  (tetris:create-player-and-reinit)
+  (setf (piece-touched tetris:*callbacks*) #'set-background-animation-timer)
   (sounds:init-sound-system)
   (sounds:play-background-music)
 
@@ -288,13 +304,14 @@
 
 
 (def-simple-main-loop play (:on-start #'init)
+  
   (draw))
 
 
 
 (defun main ()
   (tetris:create-computer)
-  (loop while (not tetris:*game-over*)
+  (loop while (not (game-over tetris:*game-state*))
      do (draw)))
 
 

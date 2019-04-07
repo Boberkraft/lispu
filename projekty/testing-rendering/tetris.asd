@@ -8,5 +8,9 @@
                #:bt-semaphore
                )
   :components (
-               (:file "tetris")))
+               (:file "tetris-structures")
+               (:file "tetris")
+               
+               
+               ))
 

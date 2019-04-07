@@ -1,6 +1,6 @@
 (defpackage #:sounds
   (:use :cl
-        :harmony-simple)
+        )
   (:export :init-sound-system
            :play-background-music
            :stop
@@ -25,7 +25,7 @@
   *stopped*)
 
 (defun init-sound-system ()
-  (setf *server* (harmony-simple:initialize)))
+  (setf *server* (harmony-simple:initialize :output-spec '(harmony-out123:out123-drain))))
 
 (defun play-background-music ()
   (when (and (not *is-background-playing*)
@@ -37,7 +37,7 @@
 (defun stop ()
   (setf *stopped* t)
   (when *background-source*
-    (harmony:pasue *background-source*)))
+    (harmony:pause *background-source*)))
 
 (defun resume ()
   (when *stopped*
