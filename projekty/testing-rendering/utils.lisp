@@ -26,7 +26,7 @@
          (< to-wait (- (now) old-time))
          )))))
 
-(defparameter *stepper* (make-stepper 0.5))
+(defparameter *stepper* (make-stepper 0.3))
 
 (defun stepper-reset ()
   (funcall *stepper* t))

@@ -14,8 +14,9 @@
            :down
            :init-tetris
            :reinit-tetris
-           :create-player-and-reinit
+           :create-game-state-and-reinit
            :drop-down
+           :create-game-state
            :get-current-colored-shape
            :get-ghost-piece
            :get-current-ghost-piece
@@ -89,13 +90,18 @@
 
 (init-tetris)
 
-(defun create-player-and-reinit ()
+(defun create-game-state ()
   "Creates new game-state and returns it."
-  (progn
-   (reinit-tetris (make-instance 'game-state))
-   (setf (game-map *game-state*) (create-map))
-   (populate-next-pieces)
-   *game-state*))
+  (let ((game-state *game-state*))
+
+    ;;set new
+    (reinit-tetris (make-instance 'game-state))
+    (setf (game-map *game-state*) (create-map))
+    (populate-next-pieces)
+    ;;reinit back
+    (prog1
+        *game-state*
+      (reinit-tetris game-state))))
 
 (defun reinit-tetris (game-state)
   "Reinits variables to point at game-state"

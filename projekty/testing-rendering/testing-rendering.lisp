@@ -18,12 +18,22 @@
 #+nil (progn
         (swank:set-default-directory "c:\\Users\\Bobi\\Desktop\\lispu\\projekty\\testing-rendering\\")
         (push #p"C:/Users/Bobi/Desktop/lispu/projekty/testing-rendering/" asdf:*central-registry*)
-        (ql:quickload :tetris)
-        (in-package #:tetris))
+        (ql:quickload :testing-rendering)
+        (in-package #:testing-rendering))
 
 (defvar *buf-stream* nil)
 (defvar *gpu-arr* nil)
 (defparameter *render-state* nil "Instance of rendering-state")
+(defparameter *players* nil "List of struct player")
+(defparameter *curr-player* 0 "Number")
+(defparameter *active-player* nil "send input to this player")
+
+(defstruct player
+  number
+  render-state
+  game-state)
+
+(defun players )
 
 (defclass render-state ()
   ((animation-timer
@@ -35,6 +45,7 @@
    (animation-color
     :accessor animation-color
     :initform (get-color-v-for-block '+))))
+
 
 (setf *render-state* (make-instance 'render-state))
 
@@ -88,10 +99,14 @@
   (let* ((pos (v:s~ (pos vert) :xyz))
          (org-pos (v:s~ pos :xy))
          (pos (+ pos
-                 (v! 0.1 0 0.5)))
-         (cords2 (v! pos 1))
+                 (v! 1 -1 0)
+                 (v! 0 0 0)))
          (pos (* pos
-                 (v! 5 10 -42.0005))))
+                 (v! 5 10 1)))
+         (pos (+ pos
+                 cords))
+         (cords2 (v! pos 1))
+         )
     (values (* perspective (v! pos 1))
             (/ (+ org-pos (v! 1 1))
                2))))
@@ -119,10 +134,23 @@
 ;;;;; 
 (defun my-tr (x y z)
   "Translation function that puts stuff at the back"
-  (v! (v:+ (v! -4.5 10)
-           (v! x
-               (* -1 y)))
-      (+ -10 z)))
+  (v:+ (v! (v:+ (v! (+ -5 ;; -5 is center
+                       (let* ((width (* (length *players*)
+                                        20))
+                              (constant (/ width
+                                           2)))
+                         (+ (- constant)
+                            (/ 20 2)
+                            (* 20 *curr-player* )
+                            )
+                         ))
+                    10) ;(v! -4.5 10)
+                (v! x
+                    (* -1 y)))
+           (+ -10 z))
+       (v!
+        0
+        0 0)))
 
 ;; ------    PLAYER INPUT
 
@@ -167,73 +195,77 @@
   (when (stepper-can-p)
     (advanced-repl))
 
-  (draw-wall tetris:+width+  tetris:+height+
-             (animation-color *render-state*)
-             (animation-timer *render-state*))
+  (dolist (player *players*)
+    (progn
+      (init-player player)
+      (draw-wall tetris:+width+  tetris:+height+
+                 (animation-color *render-state*)
+                 (animation-timer *render-state*))
 
-  ;; draw current shape
-  (loop for row below (length (tetris:get-current-shape))
-     do (loop for column below (length (car (tetris:get-current-shape)))
-           for s = (tetris:symbol-at column
-                                     row
-                                     (tetris:get-current-colored-shape))
-           when (not (eql s '-))
-           do (draw-box (+ (curr-column tetris:*game-state*) column)
-                        (+ (curr-row tetris:*game-state*) row)
-                        0
-                        (get-color-v-for-block s))))
-
-  ;; draw 2 next shapes
-  (let ((offset 1))
-    (loop
-       for num below 2
-       for shape in (mapcar
-                     (lambda (piece)
-                       (tetris:get-colored-shape piece))
-                     (tetris:get-next-pieces :limit 2))
-       ;; TODO maybe it might now work?
-       do (progn (loop for row below (length shape)
-                    do (loop for column below (length (car shape))
-                          for s = (tetris:symbol-at column
-                                                    row
-                                                    shape)
-                          when (not (eql s '-))
-                          do (draw-box (+ tetris:+width+ column 1)
-                                       (+ row 1 offset )
-                                       0
-                                       (get-color-v-for-block s))))
-                 (setf offset (+ 1 offset (length shape))))))
-
-  ;; draw ghost shape
-  (when (curr-piece tetris:*game-state*)
-    (let* ((ghost-piece (tetris:get-current-ghost-piece))
-           (ghost-shape (piece-shape ghost-piece))
-           (ghost-col (piece-column ghost-piece))
-           (ghost-row (piece-row ghost-piece)))
-      ;;::TODO will it break?
+      ;; draw current shape
       (loop for row below (length (tetris:get-current-shape))
          do (loop for column below (length (car (tetris:get-current-shape)))
                for s = (tetris:symbol-at column
                                          row
-                                         ghost-shape)
+                                         (tetris:get-current-colored-shape))
                when (not (eql s '-))
-               do (draw-box (+ ghost-col column)
-                            (+ ghost-row row)
+               do (draw-box (+ (curr-column tetris:*game-state*) column)
+                            (+ (curr-row tetris:*game-state*) row)
                             0
-                            (v:* (get-color-v-for-block (tetris:get-current-color))
-                                 0.1))))))
-  ;; draw map
-  (loop for row below tetris:+height+
-     do (loop for column below tetris:+width+
-           for s = (tetris:symbol-at column
-                                     row
-                                     (game-map tetris:*game-state*))
-                                     ;; #TODO just create get-current-map etc.
-           if (eq s '-)
-           do      '(draw-box column row -1 (get-color-v-for-block s))
-           else do (progn
-                     '(draw-box column row -2 (get-color-v-for-block '-))
-                     (draw-box column row 0 (get-color-v-for-block s)))))
+                            (get-color-v-for-block s))))
+
+      ;; draw 2 next shapes
+      (let ((offset 1))
+        (loop
+           for num below 2
+           for shape in (mapcar
+                         (lambda (piece)
+                           (tetris:get-colored-shape piece))
+                         (tetris:get-next-pieces :limit 2))
+           ;; TODO maybe it might now work?
+           do (progn (loop for row below (length shape)
+                        do (loop for column below (length (car shape))
+                              for s = (tetris:symbol-at column
+                                                        row
+                                                        shape)
+                              when (not (eql s '-))
+                              do (draw-box (+ tetris:+width+ column 1)
+                                           (+ row 1 offset )
+                                           0
+                                           (get-color-v-for-block s))))
+                     (setf offset (+ 1 offset (length shape))))))
+
+      ;; draw ghost shape
+      (when (curr-piece tetris:*game-state*)
+        (let* ((ghost-piece (tetris:get-current-ghost-piece))
+               (ghost-shape (piece-shape ghost-piece))
+               (ghost-col (piece-column ghost-piece))
+               (ghost-row (piece-row ghost-piece)))
+          ;;::TODO will it break?
+          (loop for row below (length (tetris:get-current-shape))
+             do (loop for column below (length (car (tetris:get-current-shape)))
+                   for s = (tetris:symbol-at column
+                                             row
+                                             ghost-shape)
+                   when (not (eql s '-))
+                   do (draw-box (+ ghost-col column)
+                                (+ ghost-row row)
+                                0
+                                (v:* (get-color-v-for-block (tetris:get-current-color))
+                                     0.1))))))
+      ;; draw map
+      (loop for row below tetris:+height+
+         do (loop for column below tetris:+width+
+               for s = (tetris:symbol-at column
+                                         row
+                                         (game-map tetris:*game-state*))
+               ;; #TODO just create get-current-map etc.
+               if (eq s '-)
+               do      '(draw-box column row -1 (get-color-v-for-block s))
+               else do (progn
+                         '(draw-box column row -2 (get-color-v-for-block '-))
+                         (draw-box column row 0 (get-color-v-for-block s)))))))
+  (init-player *active-player*)
   (swap))
 
 
@@ -249,7 +281,7 @@
                        0.1
                        30f0
                        60f0)
-         :cords (my-tr -1 -1.5 -1)
+         :cords (my-tr 0 0 -11.001)
          :multipler (calculate-multipler time)
          :color color
          ))
@@ -285,7 +317,10 @@
 
 
 (defun init ()
-  (tetris:create-player-and-reinit)
+  (setf *players* nil)
+  (setf *active-player*
+        (init-player (add-new-player)))
+
   (setf (piece-touched tetris:*callbacks*) #'set-background-animation-timer)
   (sounds:init-sound-system)
   (sounds:play-background-music)
@@ -304,8 +339,33 @@
 
 
 (def-simple-main-loop play (:on-start #'init)
-  
   (draw))
+
+
+(defun init-player (player)
+  #+nil(format t "~%Init player number ~a" (player-number player))
+  (setf *curr-player* (player-number player))
+  (tetris:reinit-tetris (player-game-state player))
+  (setf *render-state* (player-render-state player))
+  player)
+
+(defun change-active-player (player)
+  (setf *active-player* player))
+
+(defun add-new-player ()
+  (let ((player (make-player :game-state (tetris:create-game-state)
+                             :render-state (make-instance 'render-state)
+                             :number (length *players*))))
+    (setf *players* (append  *players* (list player)))
+    player))
+
+(defun cycle-next-player ()
+  (setf *curr-player* (mod (1+ *curr-player*)
+                           (length *players*)))
+  (init-player (get-curr-player)))
+
+(defun get-curr-player ()
+  (nth *curr-player* *players*))
 
 
 
