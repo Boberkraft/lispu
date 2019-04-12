@@ -509,7 +509,49 @@
 
 '(init-tetris)
 
+
+;;;---------------------  META STUFF
+
+(defun create-game-state ()
+  "Creates new game-state and returns it."
+  (let ((game-state *game-state*)
+        (was-before *game-state*)) ; if *game-state* is nil. 
+
+    ;;set new
+    (reinit-tetris (make-instance 'game-state))
+    (setf (game-map *game-state*) (create-map)) ;; TODO: it shound be in lisp-structures
+    (populate-next-pieces)                      ;; <--- (this)  but i dont know how to do it.
+    ;;reinit back
+
+    (prog1
+        *game-state*
+      (when was-before
+        ;; this if is for, when game-state is  nil.
+        (reinit-tetris game-state)))))
+
+(defun reinit-tetris (game-state)
+  "Reinits variables to point at this game-state. Returns game-state"
+  (setf *game-state* game-state
+        *callbacks* (callbacks *game-state*)
+        *misc* (misc *game-state*))
+  game-state)
+
+(defmacro with-game-state (game-state &body body)
+  "Reinits variables to point at this game-state. Dynamic scope"
+  `(let ((*game-state* ,game-state)
+         (*callbacks* (callbacks *game-state*))
+         (*misc* (misc *game-state*)))
+     ,@body))
+
+(defmacro with-player (player &body body)
+  "Reinits variables to point at this player. Dynamic scope"
+  `(with-game-state (game-state ,player)
+     ,@body))
+
+
+
 ;; very cool code!
+;; i think it implements mapcan.
 ;; (reduce (lambda (list-a new-one)
 ;;           (mapcar (lambda (a b) (append (if (atom b)
 ;;                                          (list b)
