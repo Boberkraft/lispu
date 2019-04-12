@@ -30,7 +30,7 @@
 (defun play-background-music ()
   (when (and (not *is-background-playing*)
              (not *stopped*))
-    (setf *background-source* (harmony-simple:play #p"chibi-tech Smugface Mafia.mp3" :music))
+    (setf *background-source* (harmony-simple:play #p"music/chibi-tech Smugface Mafia.mp3" :music))
     (setf *is-background-playing* t)
     (reload-volume)))
 
@@ -64,4 +64,4 @@
 
 (defun play-hit-sound ()
   "The sound of block hitting"
-  (harmony-simple:play #p"kick.mp3" :sfx))
+  (harmony-simple:play #p"music/kick.mp3" :sfx))
