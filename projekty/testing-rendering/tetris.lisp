@@ -1,3 +1,17 @@
+;; with this file you can play tetris.
+
+;; You need to create a game-state (create-game-state)
+;; and then (reinit-tetris /created-game-state/). Everyting is setten up and you
+;; can use all of the non-meta functions like (down), (show-map) etc.
+
+
+;; you can play with (simple-repl), or (simple-repl-with-computer).
+;; The movement keys are:
+;; - (a s d) ,
+;; - r for rotating,
+;; - space for droping down,
+;; - q to quit.
+
 
 (defpackage #:tetris
   (:use #:bt-semaphore
@@ -24,14 +38,22 @@
            :get-colored-shape
            :rotate
            :create-computer
-           :a :b :c :d :e :f :g :h :x :* :-
            :symbol-at
            :get-next-pieces
            :get-current-shape
            :game-map
            :create-map
            :new-player
+           :with-game-state
+           :with-player
            ))
+
+#+nil (progn
+        (declaim (optimize (debug 3)))
+        (swank:set-default-directory "c:\\Users\\Bobi\\Desktop\\lispu\\projekty\\testing-rendering\\")
+        (push #p"C:/Users/Bobi/Desktop/lispu/projekty/testing-rendering/" asdf:*central-registry*)
+        (ql:quickload :tetris)
+        (in-package #:tetris))
 
 (in-package :tetris)
 
@@ -39,75 +61,52 @@
 (defvar +height+ 20 "height of the map")
 
 (defvar *pieces* nil "contains all of the available pieces")
-(defparameter *game-state* nil)
-(defparameter *callbacks* nil "see game-state")
-(defparameter *misc* nil "see game-state")
 
+(defparameter *game-state* nil "Instance of rendering-state. All functions are drawing from this thing")
+(defparameter *callbacks* nil "Alias. See game-state")
+(defparameter *misc* nil "Alias. See game-state")
 
-(defun init-tetris ()
-  "Inits new game"
-  (loop for piece in
-     (list (make-piece
-            :name 'o
-            :color 'a
-            :shape '((x x)
-                     (x x)))
-           (make-piece
-            :name 't
-            :color 'b
-            :shape '((x x x)
-                     (- x -)))
-           (make-piece
-            :name 'j
-            :color 'c
-            :shape '((- x)
-                     (- x)
-                     (x x)))
-           (make-piece
-            :name 'z-inf
-            :color 'd
-            :shape '((- x x)
-                     (x x -)))
-           (make-piece
-            :name 'l
-            :color 'e
-            :shape '((x -)
-                     (x -)
-                     (x x)))
-           (make-piece
-            :name 'o
-            :color 'f
-            :shape '((x x -)
-                     (- x x)))
-           (make-piece
-            :name 'i
-            :color 'g
-            :shape '((x -)
-                     (x -)
-                     (x -)
-                     (x -))))
-     do (push piece *pieces*)))
+(setf *pieces*
+      (list (make-piece
+             :name 'o
+             :color 'a
+             :shape '((x x)
+                      (x x)))
+            (make-piece
+             :name 't
+             :color 'b
+             :shape '((x x x)
+                      (- x -)))
+            (make-piece
+             :name 'j
+             :color 'c
+             :shape '((- x)
+                      (- x)
+                      (x x)))
+            (make-piece
+             :name 'z-inf
+             :color 'd
+             :shape '((- x x)
+                      (x x -)))
+            (make-piece
+             :name 'l
+             :color 'e
+             :shape '((x -)
+                      (x -)
+                      (x x)))
+            (make-piece
+             :name 'o
+             :color 'f
+             :shape '((x x -)
+                      (- x x)))
+            (make-piece
+             :name 'i
+             :color 'g
+             :shape '((x -)
+                      (x -)
+                      (x -)
+                      (x -)))))
 
-(init-tetris)
-
-(defun create-game-state ()
-  "Creates new game-state and returns it."
-  (let ((game-state *game-state*))
-
-    ;;set new
-    (reinit-tetris (make-instance 'game-state))
-    (setf (game-map *game-state*) (create-map))
-    (populate-next-pieces)
-    ;;reinit back
-    (prog1
-        *game-state*
-      (reinit-tetris game-state))))
-
-(defun reinit-tetris (game-state)
-  "Reinits variables to point at game-state"
-  (setf *game-state* game-state
-        *callbacks* (callbacks *game-state*)
-        *misc* (misc *game-state*)))
 
 (defun create-map ()
   (loop for rows below +height+
@@ -436,7 +435,6 @@
            0.999)))
 
 (defun game-tick (d-x d-y)
-
   (bt:with-lock-held ((lock *misc*))
     (execute-all-events)
     (when (null (curr-piece *game-state*))
@@ -447,14 +445,11 @@
         (game-over-screen)
         (init-tetris)
         (return-from game-tick)))
-    (move-shape d-x d-y)
-    ;; (when *curr-shape*
-    ;;   (move-shape 0 1))
-    ))
+    (move-shape d-x d-y)))
 
 (defun computer-loop ()
   (loop while (not (game-over *game-state*))
-     do (progn (sleep (game-over *game-state*))
+     do (progn (sleep (difficulty *game-state*))
                (increase-difficulty)
                (down)
                (show-map))))
@@ -462,8 +457,11 @@
 (defun create-computer ()
   (bt:make-thread #'computer-loop))
 
-(defun simple-repl ()
+(defun simple-repl-with-computer ()
   (create-computer)
+  (simple-repl))
+
+(defun simple-repl ()
   (loop
      ;;(format t " A - LEFT ~% S - DOWN ~% D - RIGHT~% Input: ")
      (case (read-char)
@@ -471,6 +469,7 @@
        (#\s (down))
        (#\d (right))
        (#\r (rotate))
+       (#\Space (drop-down))
        (#\q (return-from simple-repl) (setf (game-over *game-state*) t)))
      (show-map)))
 

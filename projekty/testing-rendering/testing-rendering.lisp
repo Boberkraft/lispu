@@ -1,5 +1,16 @@
 ;;;; testing-rendering.lisp
 
+
+
+
+;; you can play with (play :start).
+;; The controls  are:
+;; - (a s d) ,
+;; - r for rotating,
+;; - space for droping down,
+;; - q to quit,
+;; - m to mute music. (TODO)
+
 (defpackage #:testing-rendering
   (:use #:cl
         #:cepl
@@ -11,43 +22,30 @@
         #:livesupport
         #:utils
         #:tetris-structures
+        
+
         ))
 
 (in-package :testing-rendering)
 
 #+nil (progn
+        (declaim (optimize (debug 3)))
         (swank:set-default-directory "c:\\Users\\Bobi\\Desktop\\lispu\\projekty\\testing-rendering\\")
         (push #p"C:/Users/Bobi/Desktop/lispu/projekty/testing-rendering/" asdf:*central-registry*)
         (ql:quickload :testing-rendering)
         (in-package #:testing-rendering))
 
+;;cepl stuff
 (defvar *buf-stream* nil)
 (defvar *gpu-arr* nil)
-(defparameter *render-state* nil "Instance of rendering-state")
-(defparameter *players* nil "List of struct player")
-(defparameter *curr-player* 0 "Number")
-(defparameter *active-player* nil "send input to this player")
-
-(defstruct player
-  number
-  render-state
-  game-state)
-
-(defun players )
-
-(defclass render-state ()
-  ((animation-timer
-    :accessor animation-timer
-    :initform 0)
-   (time-before-draw
-    :accessor time-before-draw
-    :initform (now))
-   (animation-color
-    :accessor animation-color
-    :initform (get-color-v-for-block '+))))
 
 
+(defparameter *local-player* nil "Gets input from this player")
+(defparameter *render-state* nil "Instance of rendering-state. All functions are drawing from this thing.")
+(defparameter *curr-player* nil "")
 (setf *render-state* (make-instance 'render-state))
+(setf player-functions:*callback-for-hooking-up-callbacks*
+      'register-callbacks)
 
 ;;;;;;;;;;;;;;;;;;;;;;;; TETRIS BLOCKS
 
@@ -131,17 +129,17 @@
 (defpipeline-g wall-pipeline ()
   (wall-vert-stage g-pnt)
   (wall-frag-stage :vec2))
-;;;;; 
+;;;;;
 (defun my-tr (x y z)
   "Translation function that puts stuff at the back"
   (v:+ (v! (v:+ (v! (+ -5 ;; -5 is center
-                       (let* ((width (* (length *players*)
+                       (let* ((width (* (length player-functions:*players*)
                                         20))
                               (constant (/ width
                                            2)))
                          (+ (- constant)
                             (/ 20 2)
-                            (* 20 *curr-player* )
+                            (* 20 (player-number *curr-player*))
                             )
                          ))
                     10) ;(v! -4.5 10)
@@ -195,14 +193,15 @@
   (when (stepper-can-p)
     (advanced-repl))
 
-  (dolist (player *players*)
+  (dolist (player player-functions:*players*)
     (progn
-      (init-player player)
+      (player-functions:init-player player)
       (draw-wall tetris:+width+  tetris:+height+
                  (animation-color *render-state*)
                  (animation-timer *render-state*))
-
+      ;;(print (tetris:get-next-pieces :limit 1))
       ;; draw current shape
+      
       (loop for row below (length (tetris:get-current-shape))
          do (loop for column below (length (car (tetris:get-current-shape)))
                for s = (tetris:symbol-at column
@@ -265,7 +264,8 @@
                else do (progn
                          '(draw-box column row -2 (get-color-v-for-block '-))
                          (draw-box column row 0 (get-color-v-for-block s)))))))
-  (init-player *active-player*)
+  
+  (player-functions:init-player *local-player*)
   (swap))
 
 
@@ -290,7 +290,7 @@
   (/ (- 2 (if (> time 2)
               2f0
               time))
-     2))
+     2f0))
 
 (defun draw-box (column row depth color)
   (map-g #'some-pipeline *buf-stream*
@@ -308,20 +308,18 @@
          ))
 
 (defun set-background-animation-timer (color)
-  (format t "Setting new animation: ~a~%"color)
-  (format t "Playing sound~%")
+  (format t "~%Setting new animation: ~a"color)
+  (format t "~%Playing sound~%")
   (sounds:play-hit-sound)
   (setf (animation-timer *render-state*) 0f0
-        (animation-color *render-state*) (get-color-v-for-block color))
-  )
+        (animation-color *render-state*) (get-color-v-for-block color)))
 
 
 (defun init ()
-  (setf *players* nil)
-  (setf *active-player*
-        (init-player (add-new-player)))
 
-  (setf (piece-touched tetris:*callbacks*) #'set-background-animation-timer)
+  (add-and-init-local-player)
+  
+
   (sounds:init-sound-system)
   (sounds:play-background-music)
 
@@ -330,7 +328,7 @@
   (on-key-down key.space 'drop-down)
   (on-key-down key.r 'rotate)
   (on-key-down key.m 'toggle-on-off)
-  ;;
+  ;; cepl stuff. Binds buffer stream containing vertexes for 3d cube.
   (unless *buf-stream*
     (destructuring-bind (vert index)
         (nineveh.mesh.data.primitives:box-gpu-arrays)
@@ -341,32 +339,8 @@
 (def-simple-main-loop play (:on-start #'init)
   (draw))
 
-
-(defun init-player (player)
-  #+nil(format t "~%Init player number ~a" (player-number player))
-  (setf *curr-player* (player-number player))
-  (tetris:reinit-tetris (player-game-state player))
-  (setf *render-state* (player-render-state player))
-  player)
-
-(defun change-active-player (player)
-  (setf *active-player* player))
-
-(defun add-new-player ()
-  (let ((player (make-player :game-state (tetris:create-game-state)
-                             :render-state (make-instance 'render-state)
-                             :number (length *players*))))
-    (setf *players* (append  *players* (list player)))
-    player))
-
-(defun cycle-next-player ()
-  (setf *curr-player* (mod (1+ *curr-player*)
-                           (length *players*)))
-  (init-player (get-curr-player)))
-
-(defun get-curr-player ()
-  (nth *curr-player* *players*))
-
+(defun register-callbacks (player)
+  (setf (piece-touched (callbacks (player-game-state player))) #'set-background-animation-timer))
 
 
 (defun main ()
@@ -375,5 +349,25 @@
      do (draw)))
 
 
+;;;;; meta
 
 
+(defmethod player-functions:init-player ((player player))
+  ;; there is :before.
+  (setf *render-state* (player-render-state player)
+        *curr-player* (player-number player)))
+
+(defun add-and-init-local-player ()
+  (setf *local-player*
+        (player-functions:init-player "local")))
+
+
+(defmacro with-player (player &body body)
+  "Replaces all the variables so the game is tricked into thinking that this player is the only player"
+  `(let (;(player-functions:*curr-player* ,player)
+         (*render-state* (player-render-state ,player)))
+     (tetris:with-player ,player
+       ,@body)))
+
+
+(defun cycle-players ())

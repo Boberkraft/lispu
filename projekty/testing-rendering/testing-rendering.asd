@@ -16,12 +16,13 @@
                #:harmony-simple
                #:harmony-out123
                #:bt-semaphore
+               #:tetris-structures
                #:tetris
                )
-  :components (
+  :components ((:file "utils")
                (:file "sounds")
-               (:file "utils")
+               
+               (:file "player-functions")
                (:file "testing-rendering")
-               (:file "tetris-structures")
                ))
 

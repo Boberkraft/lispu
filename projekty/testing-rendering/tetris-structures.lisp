@@ -28,8 +28,27 @@
 
             ;; misc
             :lock
-            :hilighted-rows))
+            :hilighted-rows
 
+            ;; player
+            :player
+            :make-player
+            :copy-play
+            :player-id
+            :player-number
+            :player-render-state
+            :player-game-state
+
+            ;;render-state
+            :render-state
+            :animation-timer
+            :time-before-draw
+            :animation-color
+
+            ;;tetris blocks
+            ))
+
+(defpackage #:tetris-blocks)
 (in-package :tetris-structures)
 
 (defstruct piece
@@ -81,7 +100,7 @@
     :accessor piece-touched
     :initform (lambda (piece-color)
                 (declare (ignore piece-color))
-                nil))))
+                (format t "~% callback not registered!")))))
 (defclass misc ()
   ((lock
     :accessor lock
@@ -89,3 +108,22 @@
    (hilighted-rows
     :accessor hilighted-rows
     :initform nil)))
+
+
+(defstruct player
+  id
+  number
+  render-state
+  game-state)
+
+
+(defclass render-state ()
+  ((animation-timer
+    :accessor animation-timer
+    :initform 0)
+   (time-before-draw
+    :accessor time-before-draw
+    :initform (utils:now))
+   (animation-color
+    :accessor animation-color
+    :initform (utils::get-color-v-for-block '+))))

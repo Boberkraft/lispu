@@ -9,6 +9,7 @@
            :on-key-down
            :on-key-up
            :on-key))
+(ql:quickload :alexandria)
 
 (in-package :utils)
 
@@ -34,21 +35,22 @@
   (funcall *stepper*))
 
 (defun get-color-v-for-block (sym)
-  (case sym
-    (tetris:A (v! 0.27 0.54 0.4 ))
-    (tetris:B (v! 1.0  0.54 0.65))
-    (tetris:C (v! 1.0  0.69 0.23))
-    (tetris:D (v! 0.71 0.29 0.15))
-    (tetris:E (v! 0.56 0.16 0.0 ))
-    (tetris:F (v! 0.0  0.69 0.23))
-    (tetris:G (v! 0.71 0.29 1   ))
-    (tetris:H (v! 0.27 0.4  0.7 ))
-    (tetris:X (v! 0    1    0   ))
-    (tetris:* (v! 1    0    0   ))
-    (tetris:- (v! 1.01 0.50 1.00))
-    (grey     (v! 0.1  0.1  0.1 ))
-    (+        (v! 0.05 0.05 0.05))
-    (otherwise (error  (format nil "color for block: ~a not found!" sym)))))
+
+  (alexandria:switch (sym :test #'string=)
+    ("A"    (v! 0.27 0.54 0.4 ))
+    ("B"    (v! 1.0  0.54 0.65))
+    ("C"    (v! 1.0  0.69 0.23))
+    ("D"    (v! 0.71 0.29 0.15))
+    ("E"    (v! 0.56 0.16 0.0 ))
+    ("F"    (v! 0.0  0.69 0.23))
+    ("G"    (v! 0.71 0.29 1   ))
+    ("H"    (v! 0.27 0.4  0.7 ))
+    ("X"    (v! 0    1    0   ))
+    ("*"    (v! 1    0    0   ))
+    ("-"    (v! 1.01 0.50 1.00))
+    ("grey" (v! 0.1  0.1  0.1 ))
+    ("+"    (v! 0.05 0.05 0.05))
+    (t (error (format nil "color for block: ~w not found!" sym)))))
 
 (defun now ()
   (/ (float (get-internal-real-time))
@@ -76,7 +78,7 @@
                      ;; see on-key-up
                      ;; or on-key-down.
                      ;; If this wasnt some weird shit then you can do
-                     ;; (skitter:make-event-listener callback) and it serves repl well.
+                     ;; (skitter:make-event-listener 'callback) and it serves repl well.
                      (skitter:keyboard 0)
                      :button key)))
       (push (cons key (list callback listener))
