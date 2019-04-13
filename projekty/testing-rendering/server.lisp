@@ -1,12 +1,9 @@
 
-
-(ql:quickload :usocket)
-(ql:quickload :bt-semaphore)
-(ql:quickload :alexandria)
-
 (defpackage serve-tetris
-  (:use)
-  (:export))
+  (:use #:cl)
+  (:export :*commands*
+           :process-command
+           :accept-tetris-command))
 
 
 
@@ -20,7 +17,7 @@
 
 
 (defun process-command (command)
-  "Calls resposible tetris funcion"
+  "Calls resposible tetris function"
   (alexandria:switch (command :test #'equal)
     ("left" (tetris:left))
     ("right" (tetris:right))
@@ -36,7 +33,7 @@
         (t
          ;; Inits player
          (format t "~%Executing command ~a" command)
-           (with-player (init-player id) ;; Changes all of the global variables.
+           (tetris:with-player (player-functions:reinit-player id) ;; Changes all of the global variables.
              (process-command command)))))
 
 

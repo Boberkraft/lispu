@@ -4,12 +4,19 @@
   (:export :start-simple-server
            :start-simple-client))
 
-(defparameter *connection-id* 0)
+(defparameter *connection-id* 0) ;; unused for now.
+;; TODO:
+;; Maybe i should be giving an unique id to each connection,
+;; so they can authenticate themself later?
+
+;; Right now im authenticating connection based on their ip and port.
+;; If its the same, then the player is the same ;
+
 
 (defun make-id (&rest lst)
   ;;TODO: it should be replecable/changeble. Maybe it is?
   "Converts given list to string. Used as id"
-  (format nil "~{~a~}" lst) )
+  (format nil "~{~a~}" lst))
 
 
 (defun start-simple-server (port callback)
