@@ -355,7 +355,8 @@
 (defmethod player-functions:init-player ((player player))
   ;; there is :before.
   (setf *render-state* (player-render-state player)
-        *curr-player* (player-number player)))
+        *curr-player* (player-number player))
+  player)
 
 (defun add-and-init-local-player ()
   (setf *local-player*
