@@ -28,11 +28,12 @@
 
 (defmethod init-player :before ((player player))
   "Returns player."
-  (tetris:reinit-tetris (player-game-state player)
-                        )
+  (tetris:reinit-tetris (player-game-state player)))
+
+(defmethod init-player ((player player))
+  "Returns player."
+  player
   )
-
-
 
 (defmethod init-player ((id string))
   "Inits player with such id. If there is no such player, it intializes him.
