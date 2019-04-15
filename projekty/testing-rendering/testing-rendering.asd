@@ -18,8 +18,9 @@
                #:bt-semaphore
                #:tetris-structures
                #:tetris
+               #:utils
                )
-  :components ((:file "utils")
+  :components (
                (:file "sounds")
                
                (:file "player-functions")

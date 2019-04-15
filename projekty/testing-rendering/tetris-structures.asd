@@ -6,8 +6,9 @@
   :serial t
   :depends-on (
                #:bt-semaphore
-               #:rtg-math)
-  :components ((:file "utils")
+               #:rtg-math
+               #:utils)
+  :components (
                (:file "tetris-structures")
                ))
 
