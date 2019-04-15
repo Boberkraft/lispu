@@ -487,7 +487,7 @@
   (if (curr-piece *game-state*)
       (show (get-current-colored-shape))
       (format t "NIL"))
-  (format t "~%[X: ~a] [Y: ~a]"
+  (format t "~%[X: ~2a] [Y: ~2a]"
           (curr-column *game-state*)
           (curr-row *game-state*))
   (add-current-piece-to-map)
@@ -544,7 +544,7 @@
 
 (defmacro with-player (player &body body)
   "Reinits variables to point at this player. Dynamic scope"
-  `(with-game-state (game-state ,player)
+  `(with-game-state (player-game-state ,player)
      ,@body))
 
 
