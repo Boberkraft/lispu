@@ -1,10 +1,14 @@
 (defpackage #:link
   (:use #:cl)
 
-  (:export :start-server
+  (:export ;; server
+           :start-server
            :stop-server
+           :send-data-to-all-clients
+           :send-data-to-client
            :client-id
 
+           ;; client
            :start-client
            :stop-client
            :send-data-to-server
@@ -56,7 +60,7 @@
 
 (defmethod send-data-to-client ((client client) (data string))
   (format (usocket:socket-stream (client-connection client))
-          message))
+          data))
 ;; ------
 
 (defun add-new-client (connection)
@@ -93,7 +97,7 @@
                (lambda ()
                  (usocket:with-connected-socket (connection (usocket:socket-accept socket))
                    (let ((client (add-new-client connection)))
-                     (format t "~% - [Server]: connection ~w accepted - " id)
+                     (format t "~% - [Server]: connection ~w accepted - " (client-id client))
                      ;; Strip/trim all of the Spaces and Newlines from end and beginning.
                      (handler-case (loop
                                       ;; read data
