@@ -9,7 +9,7 @@
            :on-key-down
            :on-key-up
            :on-key))
-(ql:quickload :alexandria)
+
 
 (in-package :utils)
 
