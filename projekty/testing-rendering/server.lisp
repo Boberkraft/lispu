@@ -24,23 +24,24 @@
     ("rotate" (tetris:rotate))
     ("drop-down" (tetris:drop-down))))
 
-(defun accept-tetris-command (id command)
-  (format t "~%Message from ~a" id)
-  (cond ((not (find command *commands* :test #'equalp))
-         ;; Is this a good command?
-         (format t "~%Unrecognized command ~a" command))
-        (t
-         ;; Inits player
-         (format t "~%Executing command \"~a\"" command)
+(defun accept-tetris-command (client command)
+  (let ((id (link:client-id client)))
+    (format t "~%Message from ~a" id)
+    (cond ((not (find command *commands* :test #'equalp))
+           ;; Is this a good command?
+           (format t "~%Unrecognized command ~a" command))
+          (t
+           ;; Inits player
+           (format t "~%Executing command \"~a\"" command)
            (tetris:with-player (player-functions:init-player id) ;; Changes all of the global variables.
-             (process-command command)))))
+             (process-command command))))))
 
 
 (defun start ()
-  (communication:start-server 'accept-tetris-command))
+  (link:start-server 'accept-tetris-command))
 
 (defun stop ()
-  (communication:stop-server))
+  (link:stop-server))
 
 
 #+ nil (start)

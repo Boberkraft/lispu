@@ -13,7 +13,7 @@
                )
   :components (
                (:file "player-functions")
-               (:file "communication")
+               (:file "link")
                (:file "server")
                (:file "client")
                ))

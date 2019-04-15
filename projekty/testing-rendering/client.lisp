@@ -15,13 +15,13 @@
 (in-package :client)
 
 (defun start ()
-  (communication:start-client))
+  (link:start-client))
 
 (defun stop ()
-  (communication:stop-client))
+  (link:stop-client))
 
 (defun send-data (message)
-  (communication:send-data-to-server message))
+  (link:send-data-to-server message))
 
 (defun start-message ()
   (start)
