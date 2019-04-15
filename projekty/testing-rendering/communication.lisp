@@ -11,6 +11,8 @@
 
 (in-package :communication)
 
+;; FIXME, printing info in threads can led to race condition. Nothing serious.
+;; i sound have made a special logging function.
 
 (defstruct client
   lock)
@@ -21,6 +23,7 @@
 
 ;;server
 (defparameter *server-running* nil)
+(defparameter *server-lock* (bt:make-lock) "Used so only one thread can symulate tetris at a time.")
 
 (defparameter *connection-id* 0) ;; unused for now.
 ;; TODO:
@@ -40,15 +43,32 @@
 (defun start-simple-server (port callback)
   "Listen on port for messange, and call callback with recived input"
   (usocket:with-socket-listener (socket "127.0.0.1" port)
-    (usocket:wait-for-input socket)
-    (format t "~% - [Server]: connection accepted -")
-    (usocket:with-connected-socket (connection (usocket:socket-accept socket))
-      (let ((addr (usocket:get-peer-address connection))
-            (port (usocket:get-peer-port connection)))
-        ;; Strip/trim all of the Spaces and Newlines from end and beginning.
-        (funcall callback (make-id addr port)
-                 (string-trim '(#\Space #\Newline)
-                              (read-line (usocket:socket-stream connection))))))))
+    (loop while *server-running*
+       do (progn
+            (format t "~% - [Server]: waiting for connection -")
+            ;; make a new thread for this connection.
+            (when (and (usocket:wait-for-input socket :timeout 1) ;; SETS SOCKET
+                       ;; wait for 1 second, returns nil if timeouted.
+                       *server-running*)
+              (bt:make-thread
+               (lambda ()
+                 (usocket:with-connected-socket (connection (usocket:socket-accept socket))
+                   (let* ((addr (usocket:get-peer-address connection))
+                          (port (usocket:get-peer-port connection))
+                          (id (make-id addr port)))
+                     (format t "~% - [Server]: connection ~w accepted - " id)
+                     ;; Strip/trim all of the Spaces and Newlines from end and beginning.
+                     (handler-case (loop
+                                      (let ((data (read-line (usocket:socket-stream connection))))
+                                        ;; read-line is blocking, can signal EOF
+                                        (bt:with-lock-held (*server-lock*)
+                                          (funcall callback id
+                                                   (string-trim '(#\Space #\Newline)
+                                                                data)))))
+                       ;; FIXME add more exceptions!
+                       (end-of-file (c) ; connection closed
+                         (declare (ignore c))
+                         (format t "~% - [Server]: connection ~w closed - " id))))))))))))
 
 (defun start-server (function)
   (setf *server-running* t)
