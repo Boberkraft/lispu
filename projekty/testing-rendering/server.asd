@@ -9,8 +9,10 @@
                #:bt-semaphore
                #:tetris
                #:alexandria
+               #:tetris-structures
                )
   :components (
+               (:file "player-functions")
                (:file "communication")
                (:file "server")
                (:file "client")

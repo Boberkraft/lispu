@@ -1,11 +1,10 @@
 
-(defpackage serve-tetris
+(defpackage #:serve
   (:use #:cl)
-  (:export :*commands*
-           :process-command
-           :accept-tetris-command))
+  (:export :start
+           :stop))
 
-
+(in-package :serve)
 
 (defparameter *commands*
   (map 'list #'string '(left
@@ -18,7 +17,7 @@
 
 (defun process-command (command)
   "Calls resposible tetris function"
-  (alexandria:switch (command :test #'equal)
+  (alexandria:switch (command :test #'equalp)
     ("left" (tetris:left))
     ("right" (tetris:right))
     ("down" (tetris:down))
@@ -26,23 +25,23 @@
     ("drop-down" (tetris:drop-down))))
 
 (defun accept-tetris-command (id command)
-  (format t "~%Message connection from ~a" id)
-  (cond ((not (find command *commands*))
+  (format t "~%Message from ~a" id)
+  (cond ((not (find command *commands* :test #'equalp))
          ;; Is this a good command?
          (format t "~%Unrecognized command ~a" command))
         (t
          ;; Inits player
-         (format t "~%Executing command ~a" command)
-           (tetris:with-player (player-functions:reinit-player id) ;; Changes all of the global variables.
+         (format t "~%Executing command \"~a\"" command)
+           (tetris:with-player (player-functions:init-player id) ;; Changes all of the global variables.
              (process-command command)))))
 
 
+(defun start ()
+  (communication:start-server 'accept-tetris-command))
+
+(defun stop ()
+  (communication:stop-server))
 
 
-
-
-
-
-
-
-
+#+ nil (start)
+#+ nil (stop)

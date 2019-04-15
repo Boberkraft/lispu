@@ -27,7 +27,11 @@
   (:documentation "Retruns initialized player or nil if couldn't"))
 
 (defmethod init-player :before ((player player))
-  (tetris:reinit-tetris (player-game-state player)))
+  "Returns player."
+  (tetris:reinit-tetris (player-game-state player)
+                        )
+  )
+
 
 
 (defmethod init-player ((id string))
@@ -36,7 +40,8 @@
   (let ((player (find-player id)))
     (init-player (if player
                      player
-                     (add-new-player id)))))
+                     (add-new-player id))))
+  )
 
 (defmethod init-player ((number number))
   "Inits player with such nth number.
@@ -58,7 +63,9 @@
                              :game-state (tetris:create-game-state)
                              :render-state (make-instance 'render-state)
                              :number (length *players*))))
-    (funcall *callback-for-hooking-up-callbacks* player)
+    (if *callback-for-hooking-up-callbacks* 
+        (funcall *callback-for-hooking-up-callbacks* player)
+        (format t "~%No hooking up of callbacks."))
     (setf *players* (append  *players* (list player)))
     player))
 
