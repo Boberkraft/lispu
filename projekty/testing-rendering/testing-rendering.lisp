@@ -24,7 +24,8 @@
         #:tetris-structures
         
 
-        ))
+        )
+  (:export :init-player))
 
 (in-package :testing-rendering)
 

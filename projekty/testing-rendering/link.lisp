@@ -9,6 +9,8 @@
            :client-id
 
            ;; client
+           :*client-running*
+           :*server-stream*
            :start-client
            :stop-client
            :send-data-to-server
@@ -22,14 +24,15 @@
 
 
 ;;client
-(defparameter *client-running* nil "True if the connection exists")
+(defparameter *client-running* nil "True if the connection exists.")
+(defparameter *server-stream* nil "Stream that connects to the server.")
 (defparameter *data-to-send* nil "List of data to send.")
-(defparameter *data-lock* (bt:make-lock) "Used for removing and adding data.")
 
 ;;server
 (defparameter *server-running* nil)
 ;; TODO move this to tetris
 (defparameter *server-lock* (bt:make-lock) "Used so only one thread can symulate tetris at a time.")
+(defparameter *change-clients-lock* (bt:make-lock) "Used so only one thread can add/remove clients at a time.")
 (defparameter *clients* nil "instances of client")
 (defparameter *connection-id* 0) ;; unused for now.
 
@@ -59,18 +62,26 @@
     (pop (client-data-to-send client))))
 
 (defmethod send-data-to-client ((client client) (data string))
+  (format t "~% - [Server]: sending to ~a: ~w - " (client-id client) data)
   (format (usocket:socket-stream (client-connection client))
           data))
 ;; ------
 
 (defun add-new-client (connection)
-  "Returns created client"
+  "Adds clients to database and returns created client"
   (let ((client (make-client :id (make-id (usocket:get-peer-address connection)
                                           (usocket:get-peer-port connection))
                              ;; example id: "#(127 0 0 1)55470"
                              :connection connection)))
-    (push client *clients*)
+    (bt:with-lock-held (*change-clients-lock*)
+      (push client *clients*))
     client))
+
+(defun remove-client (client)
+  "Removes client from database."
+  (bt:with-lock-held (*change-clients-lock*)
+    (setf *clients*
+          (remove client *clients* :test #'eq))))
 
 (defun send-data-to-all-clients (message)
   (dolist (client *clients*)
@@ -96,21 +107,28 @@
               (bt:make-thread
                (lambda ()
                  (usocket:with-connected-socket (connection (usocket:socket-accept socket))
-                   (let ((client (add-new-client connection)))
-                     (format t "~% - [Server]: connection ~w accepted - " (client-id client))
-                     ;; Strip/trim all of the Spaces and Newlines from end and beginning.
-                     (handler-case (loop
-                                      ;; read data
-                                      (let ((data (read-line (usocket:socket-stream connection))))
-                                        ;; read-line is blocking, can signal EOF
-                                        (bt:with-lock-held (*server-lock*)
-                                          (funcall callback client
-                                                   (string-trim '(#\Space #\Newline)
-                                                                data)))))
-                       ;; FIXME add more exceptions!
-                       (end-of-file (c) ; connection closed
-                         (declare (ignore c))
-                         (format t "~% - [Server]: connection ~w closed - " (client-id client)))))))))))))
+                   (handle-connection connection callback)))))))))
+
+(defun handle-connection (connection callback)
+  (let ((client (add-new-client connection)))
+    (unwind-protect
+         (progn (format t "~% - [Server]: connection ~w accepted - " (client-id client))
+                ;; Strip/trim all of the Spaces and Newlines from end and beginning.
+                (handler-case (loop
+                                 ;; read data
+                                 (let ((data (read-line (usocket:socket-stream (client-connection client)))))
+                                   ;; read-line is blocking, can signal EOF
+                                   (bt:with-lock-held (*server-lock*)
+                                     (funcall callback client
+                                              (string-trim '(#\Space #\Newline)
+                                                           data)))))
+                  ;; FIXME add more exceptions!
+                  (end-of-file (c) ; connection closed
+                    (declare (ignore c))
+                    (format t "~% - [Server]: connection ~w closed - " (client-id client)))))
+      ;; clean-up 
+      (remove-client client))))
+
 
 (defun start-server (function)
   (setf *server-running* t)
@@ -120,7 +138,7 @@
      (unwind-protect
           (progn (loop while *server-running*
                     do (progn
-                         (start-simple-server 5517 function))))
+                         (start-simple-server 5518 function))))
        (setf *server-running* nil))
      (format t "~% - [Server] STOPING - "))))
 
@@ -130,12 +148,11 @@
 ;;; ----------- client
 
 
-(defun start-client ()
-
+(defun start-client (function)
   (if (not *client-running*)
       (progn
         (bt:make-thread (lambda ()
-                          (start-simple-client 5517)))
+                          (start-simple-client 5518 function)))
         (setf *client-running* t))
       (format t "~% - [Client]: ALREADY RUNNING -")))
 
@@ -143,21 +160,8 @@
   (setf *client-running* nil))
 
 
-(defun send-data-to-server (data)
-  (bt:with-lock-held (*data-lock*)
-    (push data *data-to-send*)))
 
-(defun is-there-data-to-send-p ()
-  (bt:with-lock-held (*data-lock*)
-    *data-to-send*))
-
-(defun pop-data-to-be-sended-to-server ()
-  (bt:with-lock-held (*data-lock*)
-    (prog1
-        (first *data-to-send*)
-      (setf *data-to-send* (rest *data-to-send*)))))
-
-(defun start-simple-client (port)
+(defun start-simple-client (port callback)
   "Connect to a server and send a messange."
   (setf *client-running* t)
   (format t "~% - [Client]: STARTING - ")
@@ -166,17 +170,10 @@
   (unwind-protect
        (usocket:with-client-socket (socket stream "127.0.0.1" port)
          (format t "~% - [Client]: connected - ")
+         (setf *server-stream* stream)
          (loop while *client-running*
-            do (progn
-                 (if (is-there-data-to-send-p)
-                     (let ((data (pop-data-to-be-sended-to-server)))
-                       (format t "~% - [Client]: sending ~w - " data)
-                       (format stream data)
-                       (force-output stream))
-                     (format t "~% - [Client]: no data to send - "))
-                 (sleep 3) ;; TODO see without it.
-                 )))
+            do (funcall callback)))
     ;; something broke (prob. socket in use or something)
     (progn (format t "~% - [Client]: STOPPING -")
-           (setf *client-running* nil))))
-
+           (setf *client-running* nil)
+           (setf *server-stream* nil))))

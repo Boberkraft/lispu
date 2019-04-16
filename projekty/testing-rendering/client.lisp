@@ -14,21 +14,38 @@
 
 (in-package :client)
 
+(defparameter *server-stream* )
+
 (defun start ()
-  (link:start-client))
+  (link:start-client 'start-message))
+
+(defun start-dummy-client ()
+  (link:start-client (lambda ()
+                       (loop (sleep 0.1)))))
 
 (defun stop ()
   (link:stop-client))
 
-(defun send-data (message)
-  (link:send-data-to-server message))
+
+
+(defun send-data-to-server (message)
+  (format link:*server-stream* message)
+  (force-output link:*server-stream*))
+
+(defun read-data-from-server ()
+  (read link:*server-stream*))
 
 (defun start-message ()
-  (start)
   (send-data "left~%")
   (send-data "left~%")
   (send-data "left~%")
-  (stop))
+  (send-data "drop-down~%")
+  )
 
+(defun dummy-client ()
+  (loop while link:*client-running*
+       do (sleep 0.1)))
 
+#+nil (start-dummy-client)
 #+nil (start-message)
+#+nil (stop)

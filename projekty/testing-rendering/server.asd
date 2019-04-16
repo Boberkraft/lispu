@@ -10,6 +10,7 @@
                #:tetris
                #:alexandria
                #:tetris-structures
+               #:testing-rendering
                )
   :components (
                (:file "player-functions")
