@@ -193,7 +193,8 @@
     (setf (piece-shape copy)
           (mapcar 'reverse
                   (apply #'mapcar #'list (piece-shape copy))))
-    (incf (piece-rotation copy))
+    (setf (piece-rotation copy)
+          (mod (piece-rotation copy) 4)) ;; Rotating by 4 is the same as 0
     copy))
 
 (defmethod rotated-piece ((piece null))
