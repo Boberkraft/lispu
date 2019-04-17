@@ -143,6 +143,8 @@
   "By number"
   (nth num *pieces*))
 
+(defun get-current-piece ()
+  (curr-piece *game-state*))
 
 (defun get-current-color ()
   (piece-color (curr-piece *game-state*)))
@@ -191,6 +193,7 @@
     (setf (piece-shape copy)
           (mapcar 'reverse
                   (apply #'mapcar #'list (piece-shape copy))))
+    (incf (piece-rotation copy))
     copy))
 
 (defmethod rotated-piece ((piece null))

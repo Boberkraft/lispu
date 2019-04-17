@@ -9,6 +9,7 @@
             :piece-shape
             :piece-column
             :piece-row
+            :piece-rotation
 
             ;; game-state
             :game-state
@@ -56,8 +57,17 @@
   color
   shape
   (column nil)
-  (row nil))
+  (row nil)
+  (rotation 0))
 
+(defun copy-piece (piece)
+  "Shallow copy."
+  (make-piece :name (piece-name piece)
+              :color (piece-color piece)
+              :shape (piece-shape piece)
+              :column (piece-column piece)
+              :row (piece-row piece)
+              :rotation (piece-rotation piece)))
 
 (defclass game-state ()
   ((game-map
