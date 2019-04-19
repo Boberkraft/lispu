@@ -30,6 +30,8 @@
            :reinit-tetris
            :create-game-state-and-reinit
            :drop-down
+           :get-piece
+           :rotated-piece
            :create-game-state
            :get-current-colored-shape
            :get-ghost-piece

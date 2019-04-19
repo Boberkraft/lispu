@@ -6,14 +6,18 @@
            :stop-server
            :send-data-to-all-clients
            :send-data-to-client
+           :client
            :client-id
+           :client-player
 
            ;; client
            :*client-running*
            :*server-stream*
            :start-client
            :stop-client
+           
            :send-data-to-server
+           :create-read-loop
            ))
 
 (in-package :link)
@@ -27,7 +31,8 @@
 (defparameter *client-running* nil "True if the connection exists.")
 (defparameter *server-stream* nil "Stream that connects to the server.")
 (defparameter *data-to-send* nil "List of data to send.")
-
+(defparameter *read-loop-lock* (bt:make-lock))
+(defparameter *unreaded-data* nil)
 ;;server
 (defparameter *server-running* nil)
 ;; TODO move this to tetris
@@ -47,7 +52,8 @@
   id
   connection ;; accepted socket from usocket
   (data-to-send nil) ; list of strings
-  (lock (bt:make-lock)))
+  (lock (bt:make-lock))
+  (player nil))
 
 ;; ------ this 3 arent used in any way.
 ;; They might be used if sending data to others would turn out to be expensive.
@@ -62,9 +68,11 @@
     (pop (client-data-to-send client))))
 
 (defmethod send-data-to-client ((client client) (data string))
-  (format t "~% - [Server]: sending to ~a: ~w - " (client-id client) data)
-  (format (usocket:socket-stream (client-connection client))
-          data))
+  (bt:with-lock-held ((client-lock client))
+    (format (usocket:socket-stream (client-connection client))
+            data)
+    (force-output (usocket:socket-stream (client-connection client))))
+  (format t "~% - [Server]: sended to ~a: ~a - " (client-id client) data))
 ;; ------
 
 (defun add-new-client (connection)
@@ -84,8 +92,9 @@
           (remove client *clients* :test #'eq))))
 
 (defun send-data-to-all-clients (message)
-  (dolist (client *clients*)
-    (send-data-to-client client message)))
+  (bt:with-lock-held (*change-clients-lock*)
+    (dolist (client *clients*)
+      (send-data-to-client client message))))
 
 
 (defun make-id (&rest lst)
@@ -126,7 +135,7 @@
                   (end-of-file (c) ; connection closed
                     (declare (ignore c))
                     (format t "~% - [Server]: connection ~w closed - " (client-id client)))))
-      ;; clean-up 
+      ;; clean-up
       (remove-client client))))
 
 
@@ -159,7 +168,40 @@
 (defun stop-client ()
   (setf *client-running* nil))
 
+;;; Imperetive style. Unused.
+(defun create-read-loop ()
+  (bt:make-thread (lambda ()
+                    (loop while *client-running*
+                       do (funcall 'read-loop)))))
+(defun read-loop ()
+  (let ((data (read link:*server-stream*)))
+    (bt:with-lock-held (*read-loop-lock*)
+      (push data *unreaded-data*))))
 
+(defun is-there-data-to-read ()
+  (null *unreaded-data*))
+
+(defun get-data ()
+  (bt:with-lock-held (*read-loop-lock*)
+    (pop *unreaded-data*)))
+
+;;; ----------------
+;; Functional style.
+(defun create-read-loop (callback)
+  (bt:make-thread (lambda ()
+                    (loop while *client-running*
+                         do (on-message-loop callback)))))
+
+(defun on-message-loop (callback)
+  ;; blocking
+  (let ((data (read-line link:*server-stream*)))
+    (sleep 1)
+    (format t "~% - [Client]: recived: ~a" data)
+    (funcall callback data)))
+
+(defun send-data-to-server (message)
+  (format *server-stream* message)
+  (force-output *server-stream*))
 
 (defun start-simple-client (port callback)
   "Connect to a server and send a messange."
